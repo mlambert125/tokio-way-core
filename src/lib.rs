@@ -31,6 +31,11 @@
     clippy::result_unit_err
 )]
 
+// The test suite migrated from way-small with its `tokio_way_core::` paths
+// intact; this alias is what lets those paths resolve from inside the crate.
+#[cfg(test)]
+extern crate self as tokio_way_core;
+
 pub mod input;
 pub mod keys;
 pub mod layer;
@@ -39,6 +44,8 @@ mod run;
 pub mod scene;
 pub mod shell;
 pub mod state;
+#[cfg(test)]
+mod tests;
 
 pub use run::{FramePacer, run_compositor};
 pub use shell::{NoShell, Shell};

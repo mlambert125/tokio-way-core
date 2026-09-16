@@ -1,0 +1,20 @@
+[package]
+name = "tokio_way_core"
+version = "0.1.0"
+edition = "2024"
+description = "The mechanism half of a Wayland compositor: protocol handling, input delivery, and scene building over tokio_way_sock and tokio_way_backends. Window-management policy stays with the caller, behind the Shell trait."
+
+[dependencies]
+anyhow = "1.0.100"
+tracing = { version = "0.1.41" }
+tokio = { version = "1.48", features = ["full"] }
+tokio-util = "0.7.18"
+libc = "0.2.189"
+xkbcommon = "0.9.0"
+sendfd = { version = "0.4.4", features = ["tokio"] }
+xcursor = "0.3.10"
+strum = { version = "0.28.0", features = ["derive"] }
+enumflags2 = "0.7.12"
+
+tokio_way_sock = { git = "https://github.com/mlambert125/tokio_way_sock" }
+tokio_way_backends = { git = "https://github.com/mlambert125/tokio_way_backends" }

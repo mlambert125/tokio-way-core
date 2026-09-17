@@ -80,7 +80,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         SET_OPAQUE_REGION => handle_set_opaque_region(state, msg),
         SET_BUFFER_TRANSFORM => handle_set_buffer_transform(state, msg),
         COMMIT => handle_commit(state, msg),
-        _ => super::unknown_request(state, msg, "wl_surface"),
+        _ => super::reject_unknown_request(state, msg, "wl_surface"),
     }
 }
 
@@ -98,7 +98,7 @@ fn handle_attach(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo
     let mut args = ArgReader::new(&msg.message.args);
     // attach args: object buffer (id or 0 for null), int32 x, int32 y
     let (Some(buffer_id), Some(x), Some(y)) = (args.u32(), args.i32(), args.i32()) else {
-        super::malformed_request(state, msg, "wl_surface");
+        super::reject_malformed_request(state, msg, "wl_surface");
         return;
     };
 
@@ -118,7 +118,7 @@ fn handle_attach(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo
 fn handle_offset(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(x), Some(y)) = (args.i32(), args.i32()) else {
-        super::malformed_request(state, msg, "wl_surface");
+        super::reject_malformed_request(state, msg, "wl_surface");
         return;
     };
 
@@ -161,7 +161,7 @@ fn handle_damage(
     let (Some(x), Some(y), Some(width), Some(height)) =
         (args.i32(), args.i32(), args.i32(), args.i32())
     else {
-        super::malformed_request(state, msg, "wl_surface");
+        super::reject_malformed_request(state, msg, "wl_surface");
         return;
     };
 
@@ -188,14 +188,14 @@ fn handle_frame(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo)
     let mut args = ArgReader::new(&msg.message.args);
     // frame args: new_id callback
     let Some(callback_id) = args.new_id() else {
-        super::malformed_request(state, msg, "wl_surface");
+        super::reject_malformed_request(state, msg, "wl_surface");
         return;
     };
 
     let surface_id = msg.message.object_id;
 
     if client
-        .register(callback_id, ObjectType::WlCallback)
+        .register_client_object(callback_id, ObjectType::WlCallback)
         .is_err()
     {
         return;
@@ -253,7 +253,7 @@ fn handle_set_opaque_region(state: &mut CompositorState, msg: &WaylandRequestWit
 fn handle_set_buffer_transform(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(value) = args.i32() else {
-        super::malformed_request(state, msg, "wl_surface");
+        super::reject_malformed_request(state, msg, "wl_surface");
         return;
     };
 
@@ -291,7 +291,7 @@ fn decode_region(
 ) -> Option<PendingRegion> {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(region_id) = args.u32() else {
-        super::malformed_request(state, msg, "wl_surface");
+        super::reject_malformed_request(state, msg, "wl_surface");
         return None;
     };
     if region_id == 0 {

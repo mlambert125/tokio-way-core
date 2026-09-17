@@ -47,5 +47,5 @@ pub fn kind_mask(flags: tokio_way_backends::messages::PresentationFlags) -> u32 
 }
 
 pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
-    super::unknown_request(state, msg, "wp_presentation_feedback");
+    super::reject_unknown_request(state, msg, "wp_presentation_feedback");
 }

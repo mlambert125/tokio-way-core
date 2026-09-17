@@ -38,7 +38,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo, f
     match msg.message.op_code {
         RECEIVE => handle_receive(state, msg, fds),
         DESTROY => handle_destroy(state, msg),
-        _ => super::unknown_request(state, msg, INTERFACE),
+        _ => super::reject_unknown_request(state, msg, INTERFACE),
     }
 }
 
@@ -56,7 +56,7 @@ fn handle_receive(
 ) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(mime_type) = args.string() else {
-        super::malformed_request(state, msg, INTERFACE);
+        super::reject_malformed_request(state, msg, INTERFACE);
         return;
     };
     // The dispatcher guarantees exactly one, having claimed it from the

@@ -75,7 +75,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo, f
         ADD => handle_add(state, msg, fds),
         CREATE => handle_create(state, msg, None),
         CREATE_IMMED => handle_create_immed(state, msg),
-        _ => super::unknown_request(state, msg, "zwp_linux_buffer_params_v1"),
+        _ => super::reject_unknown_request(state, msg, "zwp_linux_buffer_params_v1"),
     }
 }
 
@@ -288,7 +288,10 @@ fn handle_create_immed(state: &mut CompositorState, msg: &WaylandRequestWithClie
     let Some(client) = state.clients.get(msg.client_id) else {
         return;
     };
-    if client.register(buffer_id, ObjectType::WlBuffer).is_err() {
+    if client
+        .register_client_object(buffer_id, ObjectType::WlBuffer)
+        .is_err()
+    {
         return;
     }
 
@@ -553,7 +556,7 @@ pub fn resolve_import(state: &mut CompositorState, token: u64, imported: bool) {
     let Some(client) = state.clients.get(pending.client_id) else {
         return;
     };
-    let Some(buffer_id) = client.allocate_id(ObjectType::WlBuffer) else {
+    let Some(buffer_id) = client.register_server_object(ObjectType::WlBuffer) else {
         send_failed(state, key);
         return;
     };

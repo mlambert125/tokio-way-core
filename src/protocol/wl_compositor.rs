@@ -20,7 +20,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     match msg.message.op_code {
         CREATE_SURFACE => handle_create_surface(state, msg),
         CREATE_REGION => handle_create_region(state, msg),
-        _ => super::unknown_request(state, msg, "wl_compositor"),
+        _ => super::reject_unknown_request(state, msg, "wl_compositor"),
     }
 }
 
@@ -44,7 +44,7 @@ fn handle_create_surface(state: &mut CompositorState, msg: &WaylandRequestWithCl
 
     let version = client.version(msg.message.object_id);
     if client
-        .register_with_version(surface_id, ObjectType::WlSurface, version)
+        .register_client_object_with_version(surface_id, ObjectType::WlSurface, version)
         .is_err()
     {
         return;
@@ -72,7 +72,7 @@ fn handle_create_region(state: &mut CompositorState, msg: &WaylandRequestWithCli
 
     let version = client.version(msg.message.object_id);
     if client
-        .register_with_version(region_id, ObjectType::WlRegion, version)
+        .register_client_object_with_version(region_id, ObjectType::WlRegion, version)
         .is_err()
     {
         return;

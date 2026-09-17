@@ -7,7 +7,9 @@
 //! surface, and working out how much of the output is left for windows — and
 //! they must agree, or a panel reserves space somewhere it is not.
 
-use super::state::{Anchor, ClientObjectId, CompositorState, LayerPending, LayerSurfaceState};
+use super::state::{
+    Anchor, ClientObjectId, CompositorState, LayerSurfaceState, LayerSurfaceStatePending,
+};
 use tokio_way_backends::outputs::{Output, OutputId};
 
 /// A rectangle in the output's logical coordinates, relative to its origin.
@@ -107,7 +109,7 @@ impl Arrangement {
 /// as the anchor makes me". Anchored to one edge, it sits against that edge at
 /// the size it asked for. Anchored to neither, it is centred. Margins push it
 /// away from the edges it is anchored to.
-pub fn place(area: Rect, layer: &LayerPending) -> Rect {
+pub fn place(area: Rect, layer: &LayerSurfaceStatePending) -> Rect {
     let anchor = layer.anchor;
     let (margin_top, margin_right, margin_bottom, margin_left) = layer.margin;
 

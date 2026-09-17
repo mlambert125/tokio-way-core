@@ -42,10 +42,14 @@ fn state_with_a_device() -> (CompositorState, Receiver<WaylandEvent>, Cancellati
     state.clients.create(CLIENT, tx, token.clone());
     let client = state.clients.get(CLIENT).unwrap();
     client
-        .register(MANAGER, ObjectType::WpCursorShapeManager)
+        .register_client_object(MANAGER, ObjectType::WpCursorShapeManager)
         .unwrap();
-    client.register(POINTER, ObjectType::WlPointer).unwrap();
-    client.register(SURFACE, ObjectType::WlSurface).unwrap();
+    client
+        .register_client_object(POINTER, ObjectType::WlPointer)
+        .unwrap();
+    client
+        .register_client_object(SURFACE, ObjectType::WlSurface)
+        .unwrap();
     state.create_surface(CLIENT, SURFACE);
     state.pointer_surface = Some((CLIENT, SURFACE));
     state.pointer_enter_serial.insert(CLIENT, SERIAL);

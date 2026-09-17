@@ -30,7 +30,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
             }
         }
         RING => handle_ring(state, msg),
-        _ => super::unknown_request(state, msg, "xdg_system_bell_v1"),
+        _ => super::reject_unknown_request(state, msg, "xdg_system_bell_v1"),
     }
 }
 
@@ -47,7 +47,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
 fn handle_ring(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(surface_id) = args.u32() else {
-        super::malformed_request(state, msg, "xdg_system_bell_v1");
+        super::reject_malformed_request(state, msg, "xdg_system_bell_v1");
         return;
     };
 

@@ -1,8 +1,4 @@
 //! Protocol module root.
-//!
-//! Declares submodules, re-exports key types, defines shared protocol
-//! constants (`ObjectType`, globals table, serial generation), and provides
-//! the top-level `handle_message()` dispatch.
 
 use super::state::{ClientObjectId, CompositorState, DataInterface};
 use std::os::fd::OwnedFd;
@@ -62,8 +58,7 @@ pub mod zwp_primary_selection_source;
 pub mod zxdg_decoration_manager;
 pub mod zxdg_toplevel_decoration;
 
-/// Atomic serial number used throughout the compositor to track
-/// event and operation ordering
+/// Atomic serial number to track event and operation ordering
 static NEXT_SERIAL: AtomicU32 = AtomicU32::new(1);
 
 /// Helper method for getting the next atomic number
@@ -71,29 +66,13 @@ pub fn next_serial() -> u32 {
     NEXT_SERIAL.fetch_add(1, Ordering::Relaxed)
 }
 
-/// `wl_display.error` codes. Every one of them is fatal — see
-/// [`crate::state::ClientState::send_error`].
-///
-/// The object named does not exist, or the client is not allowed to name it.
+/// `wl_display.error` - The object named does not exist, or the client is not allowed to name it.
 pub const ERROR_INVALID_OBJECT: u32 = 0;
-/// The object exists, but the request named is not one of its own.
+/// `wl_display.error` - The object exists, but the request named is not one of its own.
 pub const ERROR_INVALID_METHOD: u32 = 1;
 
 /// Reject a request whose opcode the interface does not have.
-///
-/// Being lenient here was tempting and is wrong. An opcode outside an
-/// interface's range means the client and the compositor disagree about what
-/// object this id is, or about what version of the interface it is speaking —
-/// and every later request on that connection is decoded against the same
-/// disagreement. Logging and continuing leaves the client believing its
-/// request was honoured, and turns one recognisable fault into arbitrary
-/// behaviour some distance away.
-///
-/// The compositor's side of the bargain is that a request in an interface's
-/// advertised version is always in the match: a request accepted but not yet
-/// acted on gets an arm of its own that does nothing, so "not implemented" and
-/// "not a request" never look alike from here.
-pub fn unknown_request(
+pub fn reject_unknown_request(
     state: &mut CompositorState,
     msg: &WaylandRequestWithClientInfo,
     interface: &str,
@@ -114,23 +93,14 @@ pub fn unknown_request(
 }
 
 /// Reject a request whose arguments do not decode.
-///
-/// A request that is short of the arguments its opcode carries is not a client
-/// being economical — the wire format is fixed-width per argument, so the
-/// bytes were either never written or the sender is out of step with the
-/// interface it thinks it is calling. Either way the compositor cannot know
-/// what was meant, and returning quietly leaves the client waiting on the
-/// effect of a request that never happened.
-pub fn malformed_request(
+pub fn reject_malformed_request(
     state: &mut CompositorState,
     msg: &WaylandRequestWithClientInfo,
     interface: &str,
 ) {
     let op_code = msg.message.op_code;
     let object_id = msg.message.object_id;
-    // Named from the signature table where it can be, because "malformed
-    // arguments for xdg_positioner.set_anchor" tells a client's author where
-    // to look and "request 3" makes them go and count.
+
     let named = state
         .clients
         .get(msg.client_id)
@@ -153,15 +123,7 @@ pub fn malformed_request(
     }
 }
 
-/// Ask whichever interface owns a source to hand over its content.
-///
-/// Three interfaces can own a selection, and the request that reaches the
-/// source is the same shape in all three — a mime type and a descriptor — but
-/// not the same opcode on the same interface. This is the one place that knows
-/// which, so no caller in the receive path has to.
-///
-/// A source that has gone takes the descriptor with it, which closes it: the
-/// reader sees an empty transfer rather than a hang.
+/// Ask whichever interface owns a data source to hand over its content.
 pub fn send_source_content(
     state: &mut CompositorState,
     source: ClientObjectId,
@@ -181,14 +143,7 @@ pub fn send_source_content(
 }
 
 /// Tell whichever interface owns a source that it has been cancelled.
-///
-/// As [`send_source_content`], for the event that says the source no longer
-/// owns what it was offering. A source the compositor has already forgotten is
-/// told nothing, which is right: it is gone.
 pub fn cancel_source(state: &mut CompositorState, source: ClientObjectId) {
-    // Marked before the send, and marked whatever the interface: it is what
-    // `zwlr_data_control_source_v1.offer` checks to refuse a mime type added
-    // after the fact, and a source cancelled twice is still cancelled once.
     if let Some(source) = state.data_sources.get_mut(&source) {
         source.cancelled = true;
     }
@@ -263,18 +218,13 @@ pub struct Global {
     pub version: u32,
 }
 
-/// The `wl_output` version we support. Defined here since `wl_output` globals
-/// are dynamically advertised (one per physical output) rather than being
-/// in the static GLOBALS array.
+/// The `wl_output` version we support. These are globals, but there's one per monitor.
 pub const WL_OUTPUT_VERSION: u32 = 4;
 
-/// The interface name those dynamic globals are advertised under. Named for
-/// the same reason as the version: it is written once when the global is
-/// announced and read again when a client binds it, and the two have to agree.
+/// The interface name those dynamic globals are advertised under.
 pub const WL_OUTPUT_INTERFACE: &str = "wl_output";
 
-/// Globals provided by the compositor.  These are available to all clients and
-/// live for the entire lifetime of the compositor.
+/// Static globals provided by the compositor.
 pub static GLOBALS: &[Global] = &[
     Global {
         interface: "wl_compositor",
@@ -340,23 +290,9 @@ pub static GLOBALS: &[Global] = &[
         interface: zwlr_layer_shell::INTERFACE,
         version: zwlr_layer_shell::VERSION,
     },
-    // wl_output is not in this static list — each physical output gets its own
-    // dynamic global, managed via CompositorState::output_global_names.
 ];
 
 /// Number of file descriptors a request carries as ancillary data.
-///
-/// Wayland passes fds out-of-band, so the socket task cannot pair them with
-/// messages on its own — that needs the object id to interface mapping, which
-/// only lives here. This is the single place that pairing is decided, and
-/// `handle_message` applies it to every request before dispatch.
-///
-/// Read off [`signature`] rather than kept by hand. The three requests that
-/// carry a descriptor used to be a literal list here, correct only for as long
-/// as somebody remembered to widen it — and forgetting to desyncs that
-/// client's fd queue for the rest of the connection, a failure that surfaces
-/// nowhere near its cause. Deriving it means a new request cannot declare a
-/// descriptor without this following.
 fn request_fd_count(obj_type: ObjectType, op_code: u16) -> usize {
     signature::request_at(obj_type, op_code).map_or(0, |request| {
         request
@@ -367,8 +303,7 @@ fn request_fd_count(obj_type: ObjectType, op_code: u16) -> usize {
     })
 }
 
-/// Dispatch an individual message coming from the socket to the appropriate handler to
-/// decode and update compositor state
+/// Dispatch an individual message coming from the socket to the appropriate handler
 #[allow(clippy::too_many_lines)]
 pub fn handle_message(state: &mut CompositorState, message: &WaylandRequestWithClientInfo) {
     let object_id = message.message.object_id;
@@ -380,21 +315,11 @@ pub fn handle_message(state: &mut CompositorState, message: &WaylandRequestWithC
 
     let obj_type = client.objects.get(&object_id).copied();
 
-    // Claim the fds this request is specified to carry, before any handler
-    // runs. Holding them here rather than leaving them on the client's queue is
-    // what makes the accounting total: a handler that ignores them (or returns
-    // early, or is an unimplemented stub) drops the `Vec<OwnedFd>` and the
-    // descriptors are closed, instead of being mispaired with a later request.
     let mut request_fds: Vec<OwnedFd> = Vec::new();
     if let Some(obj_type) = obj_type {
         let count = request_fd_count(obj_type, message.message.op_code);
         if count > 0 {
             if client.fd_queue.len() < count {
-                // An fd always reaches us with the first byte of the message it
-                // belongs to, and its read's descriptors are queued before that
-                // read's requests are dispatched, so a short queue is a genuine
-                // protocol violation rather than a race with the socket task.
-                // Continuing would mispair every later fd, so drop the client.
                 tracing::warn!(
                     "client {}: request for object {} is missing its file descriptor",
                     client_id,
@@ -563,9 +488,6 @@ pub fn handle_message(state: &mut CompositorState, message: &WaylandRequestWithC
                 object_id,
                 message.message.op_code,
             );
-            // Fatal by spec. Also necessary here: we cannot know how many fds
-            // an unknown object's request carried, so anything it attached is
-            // already orphaned on the queue and would mispair later requests.
             client.send_error(
                 object_id,
                 ERROR_INVALID_OBJECT,

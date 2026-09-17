@@ -64,7 +64,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
             // compositor already has.
             debug!("xdg_positioner.set_parent_configure: placement is not deferred");
         }
-        _ => super::unknown_request(state, msg, "xdg_positioner"),
+        _ => super::reject_unknown_request(state, msg, "xdg_positioner"),
     }
 }
 
@@ -81,7 +81,7 @@ fn handle_destroy(state: &mut CompositorState, msg: &WaylandRequestWithClientInf
 fn handle_set_size(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(width), Some(height)) = (args.i32(), args.i32()) else {
-        super::malformed_request(state, msg, "xdg_positioner");
+        super::reject_malformed_request(state, msg, "xdg_positioner");
         return;
     };
     let id = msg.message.object_id;
@@ -95,7 +95,7 @@ fn handle_set_anchor_rect(state: &mut CompositorState, msg: &WaylandRequestWithC
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(x), Some(y), Some(w), Some(h)) = (args.i32(), args.i32(), args.i32(), args.i32())
     else {
-        super::malformed_request(state, msg, "xdg_positioner");
+        super::reject_malformed_request(state, msg, "xdg_positioner");
         return;
     };
     let id = msg.message.object_id;
@@ -107,7 +107,7 @@ fn handle_set_anchor_rect(state: &mut CompositorState, msg: &WaylandRequestWithC
 fn handle_set_anchor(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(anchor) = args.u32() else {
-        super::malformed_request(state, msg, "xdg_positioner");
+        super::reject_malformed_request(state, msg, "xdg_positioner");
         return;
     };
     let id = msg.message.object_id;
@@ -134,7 +134,7 @@ fn handle_set_anchor(state: &mut CompositorState, msg: &WaylandRequestWithClient
 fn handle_set_gravity(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(gravity) = args.u32() else {
-        super::malformed_request(state, msg, "xdg_positioner");
+        super::reject_malformed_request(state, msg, "xdg_positioner");
         return;
     };
     let id = msg.message.object_id;
@@ -160,7 +160,7 @@ fn handle_set_constraint_adjustment(
 ) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(adjustment) = args.u32() else {
-        super::malformed_request(state, msg, "xdg_positioner");
+        super::reject_malformed_request(state, msg, "xdg_positioner");
         return;
     };
     let id = msg.message.object_id;
@@ -172,7 +172,7 @@ fn handle_set_constraint_adjustment(
 fn handle_set_offset(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(x), Some(y)) = (args.i32(), args.i32()) else {
-        super::malformed_request(state, msg, "xdg_positioner");
+        super::reject_malformed_request(state, msg, "xdg_positioner");
         return;
     };
     let id = msg.message.object_id;
@@ -184,7 +184,7 @@ fn handle_set_offset(state: &mut CompositorState, msg: &WaylandRequestWithClient
 fn handle_set_parent_size(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(width), Some(height)) = (args.i32(), args.i32()) else {
-        super::malformed_request(state, msg, "xdg_positioner");
+        super::reject_malformed_request(state, msg, "xdg_positioner");
         return;
     };
     if let Some(pos) = state

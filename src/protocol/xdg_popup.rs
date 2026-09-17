@@ -29,7 +29,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         DESTROY => handle_destroy(state, msg),
         GRAB => handle_grab(state, msg),
         REPOSITION => handle_reposition(state, msg),
-        _ => super::unknown_request(state, msg, "xdg_popup"),
+        _ => super::reject_unknown_request(state, msg, "xdg_popup"),
     }
 }
 
@@ -115,7 +115,7 @@ pub fn send_popup_done(state: &mut CompositorState, client_id: u32, popup_id: u3
 fn handle_reposition(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(positioner_id), Some(token)) = (args.u32(), args.u32()) else {
-        super::malformed_request(state, msg, "xdg_popup");
+        super::reject_malformed_request(state, msg, "xdg_popup");
         return;
     };
 

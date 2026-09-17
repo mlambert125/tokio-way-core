@@ -49,16 +49,18 @@ fn client_with_a_bar() -> (CompositorState, CancellationToken, Receiver<WaylandE
 
     let client = state.clients.get(CLIENT).unwrap();
     client
-        .register(LAYER_SHELL, ObjectType::ZwlrLayerShell)
+        .register_client_object(LAYER_SHELL, ObjectType::ZwlrLayerShell)
         .unwrap();
     for surface in [BAR_SURFACE, POPUP_SURFACE] {
-        client.register(surface, ObjectType::WlSurface).unwrap();
+        client
+            .register_client_object(surface, ObjectType::WlSurface)
+            .unwrap();
     }
     client
-        .register_with_version(POPUP_XDG_SURFACE, ObjectType::XdgSurface, 5)
+        .register_client_object_with_version(POPUP_XDG_SURFACE, ObjectType::XdgSurface, 5)
         .unwrap();
     client
-        .register(POSITIONER, ObjectType::XdgPositioner)
+        .register_client_object(POSITIONER, ObjectType::XdgPositioner)
         .unwrap();
     for surface in [BAR_SURFACE, POPUP_SURFACE] {
         state.create_surface(CLIENT, surface);

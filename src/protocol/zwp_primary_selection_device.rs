@@ -37,7 +37,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     match msg.message.op_code {
         SET_SELECTION => handle_set_selection(state, msg),
         DESTROY => handle_destroy(state, msg),
-        _ => super::unknown_request(state, msg, INTERFACE),
+        _ => super::reject_unknown_request(state, msg, INTERFACE),
     }
 }
 
@@ -45,7 +45,7 @@ fn handle_set_selection(state: &mut CompositorState, msg: &WaylandRequestWithCli
     let mut args = ArgReader::new(&msg.message.args);
     // set_selection args: object source (nullable), uint serial
     let (Some(source_id), Some(serial)) = (args.u32(), args.u32()) else {
-        super::malformed_request(state, msg, INTERFACE);
+        super::reject_malformed_request(state, msg, INTERFACE);
         return;
     };
 
@@ -112,7 +112,7 @@ fn create_offer(
 ) -> Option<ClientObjectId> {
     let client = state.clients.get(client_id)?;
     // No version to carry: this protocol has one, and no event on it is gated.
-    let offer_id = client.allocate_id(ObjectType::ZwpPrimarySelectionOffer)?;
+    let offer_id = client.register_server_object(ObjectType::ZwpPrimarySelectionOffer)?;
 
     let mime_types = state
         .data_sources

@@ -49,7 +49,7 @@ fn add_manager(
         .clients
         .get(client_id)
         .unwrap()
-        .register_with_version(MANAGER, ObjectType::ZwlrDataControlManager, version)
+        .register_client_object_with_version(MANAGER, ObjectType::ZwlrDataControlManager, version)
         .unwrap();
     deliver(
         state,
@@ -442,7 +442,7 @@ fn a_source_of_another_interface_cannot_be_put_on_a_selection() {
         .clients
         .get(1)
         .unwrap()
-        .register_with_version(MANAGER, ObjectType::ZwlrDataControlManager, 2)
+        .register_client_object_with_version(MANAGER, ObjectType::ZwlrDataControlManager, 2)
         .unwrap();
     deliver(
         &mut state,

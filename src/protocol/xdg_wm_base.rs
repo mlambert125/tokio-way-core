@@ -30,7 +30,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         CREATE_POSITIONER => handle_create_positioner(state, msg),
         GET_XDG_SURFACE => handle_get_xdg_surface(state, msg),
         PONG => handle_pong(msg),
-        _ => super::unknown_request(state, msg, "xdg_wm_base"),
+        _ => super::reject_unknown_request(state, msg, "xdg_wm_base"),
     }
 }
 
@@ -56,7 +56,7 @@ fn handle_create_positioner(state: &mut CompositorState, msg: &WaylandRequestWit
 
     let version = client.version(msg.message.object_id);
     if client
-        .register_with_version(positioner_id, ObjectType::XdgPositioner, version)
+        .register_client_object_with_version(positioner_id, ObjectType::XdgPositioner, version)
         .is_err()
     {
         return;
@@ -99,7 +99,7 @@ fn handle_get_xdg_surface(state: &mut CompositorState, msg: &WaylandRequestWithC
 
     let version = client.version(msg.message.object_id);
     if client
-        .register_with_version(xdg_surface_id, ObjectType::XdgSurface, version)
+        .register_client_object_with_version(xdg_surface_id, ObjectType::XdgSurface, version)
         .is_err()
     {
         return;

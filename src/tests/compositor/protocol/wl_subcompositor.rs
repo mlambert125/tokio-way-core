@@ -24,10 +24,14 @@ fn state_with_two_surfaces() -> (CompositorState, CancellationToken) {
     state.create_surface(CLIENT, PARENT);
     state.create_surface(CLIENT, CHILD);
     let client = state.clients.get(CLIENT).unwrap();
-    client.register(PARENT, ObjectType::WlSurface).unwrap();
-    client.register(CHILD, ObjectType::WlSurface).unwrap();
     client
-        .register(SUBCOMPOSITOR, ObjectType::WlSubcompositor)
+        .register_client_object(PARENT, ObjectType::WlSurface)
+        .unwrap();
+    client
+        .register_client_object(CHILD, ObjectType::WlSurface)
+        .unwrap();
+    client
+        .register_client_object(SUBCOMPOSITOR, ObjectType::WlSubcompositor)
         .unwrap();
     (state, token)
 }

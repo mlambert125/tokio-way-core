@@ -32,7 +32,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         SET_MODE | UNSET_MODE => {
             send_configure(state, msg.client_id, msg.message.object_id);
         }
-        _ => super::unknown_request(state, msg, "zxdg_toplevel_decoration_v1"),
+        _ => super::reject_unknown_request(state, msg, "zxdg_toplevel_decoration_v1"),
     }
 }
 

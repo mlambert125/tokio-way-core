@@ -149,7 +149,7 @@ fn connected_surface() -> (CompositorState, Receiver<WaylandEvent>) {
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(SURFACE, tokio_way_core::protocol::ObjectType::WlSurface)
+        .register_client_object(SURFACE, tokio_way_core::protocol::ObjectType::WlSurface)
         .unwrap();
     (state, rx)
 }

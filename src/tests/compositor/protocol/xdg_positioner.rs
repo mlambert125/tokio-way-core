@@ -27,7 +27,7 @@ fn client_with_a_positioner() -> (CompositorState, CancellationToken, Receiver<W
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(POSITIONER, ObjectType::XdgPositioner)
+        .register_client_object(POSITIONER, ObjectType::XdgPositioner)
         .unwrap();
     (state, token, rx)
 }

@@ -22,7 +22,7 @@ fn client_with_manager() -> (CompositorState, Receiver<WaylandEvent>) {
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(
+        .register_client_object(
             MANAGER,
             tokio_way_core::protocol::ObjectType::ZxdgDecorationManager,
         )

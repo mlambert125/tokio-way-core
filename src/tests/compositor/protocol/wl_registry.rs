@@ -42,7 +42,7 @@ fn client_with_a_registry() -> (CompositorState, CancellationToken, Receiver<Way
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(REGISTRY, ObjectType::WlRegistry)
+        .register_client_object(REGISTRY, ObjectType::WlRegistry)
         .unwrap();
     (state, token, rx)
 }

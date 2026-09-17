@@ -26,7 +26,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         PLACE_BELOW => handle_place_below(state, msg),
         SET_SYNC => handle_set_sync(state, msg, true),
         SET_DESYNC => handle_set_sync(state, msg, false),
-        _ => super::unknown_request(state, msg, "wl_subsurface"),
+        _ => super::reject_unknown_request(state, msg, "wl_subsurface"),
     }
 }
 
@@ -83,7 +83,7 @@ fn handle_destroy(state: &mut CompositorState, msg: &WaylandRequestWithClientInf
 fn handle_set_position(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(x), Some(y)) = (args.i32(), args.i32()) else {
-        super::malformed_request(state, msg, "wl_subsurface");
+        super::reject_malformed_request(state, msg, "wl_subsurface");
         return;
     };
 
@@ -100,7 +100,7 @@ fn handle_set_position(state: &mut CompositorState, msg: &WaylandRequestWithClie
 fn handle_place_above(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(sibling_id) = args.u32() else {
-        super::malformed_request(state, msg, "wl_subsurface");
+        super::reject_malformed_request(state, msg, "wl_subsurface");
         return;
     };
 
@@ -130,7 +130,7 @@ fn handle_place_above(state: &mut CompositorState, msg: &WaylandRequestWithClien
 fn handle_place_below(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(sibling_id) = args.u32() else {
-        super::malformed_request(state, msg, "wl_subsurface");
+        super::reject_malformed_request(state, msg, "wl_subsurface");
         return;
     };
 

@@ -97,7 +97,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
             }
         }
         SET_SHAPE => handle_set_shape(state, msg),
-        _ => super::unknown_request(state, msg, INTERFACE),
+        _ => super::reject_unknown_request(state, msg, INTERFACE),
     }
 }
 
@@ -105,7 +105,7 @@ fn handle_set_shape(state: &mut CompositorState, msg: &WaylandRequestWithClientI
     let mut args = ArgReader::new(&msg.message.args);
     // set_shape args: uint serial, uint shape
     let (Some(serial), Some(shape)) = (args.u32(), args.u32()) else {
-        super::malformed_request(state, msg, INTERFACE);
+        super::reject_malformed_request(state, msg, INTERFACE);
         return;
     };
 

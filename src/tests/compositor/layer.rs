@@ -9,7 +9,9 @@
 
 use tokio_way_backends::outputs::OutputId;
 use tokio_way_core::layer::{Rect, geometry, place, usable_area};
-use tokio_way_core::state::{Anchor, CompositorState, Layer, LayerPending, LayerSurfaceState};
+use tokio_way_core::state::{
+    Anchor, CompositorState, LayerKind, LayerSurfaceState, LayerSurfaceStatePending,
+};
 
 const OUTPUT: OutputId = OutputId(1);
 const SCREEN: Rect = Rect {
@@ -19,11 +21,11 @@ const SCREEN: Rect = Rect {
     height: 800,
 };
 
-fn wants(anchor: u32, size: (i32, i32)) -> LayerPending {
-    LayerPending {
+fn wants(anchor: u32, size: (i32, i32)) -> LayerSurfaceStatePending {
+    LayerSurfaceStatePending {
         size,
         anchor: Anchor(anchor),
-        ..LayerPending::default()
+        ..LayerSurfaceStatePending::default()
     }
 }
 
@@ -93,12 +95,12 @@ fn margins_push_only_against_edges_the_surface_touches() {
     // A margin on an edge the surface is not anchored to has nothing to push
     // against, so it must not shift the surface. Applying all four regardless
     // would drag a top-anchored bar down by its bottom margin.
-    let bar = LayerPending {
+    let bar = LayerSurfaceStatePending {
         size: (0, 30),
         anchor: Anchor(Anchor::LEFT | Anchor::TOP | Anchor::RIGHT),
         // top, right, bottom, left
         margin: (10, 5, 999, 5),
-        ..LayerPending::default()
+        ..LayerSurfaceStatePending::default()
     };
     assert_eq!(
         place(SCREEN, &bar),
@@ -113,7 +115,7 @@ fn margins_push_only_against_edges_the_surface_touches() {
 }
 
 /// An output with one layer surface on it, described by what it asked for.
-fn state_with_layers(layers: &[(u32, LayerPending)]) -> CompositorState {
+fn state_with_layers(layers: &[(u32, LayerSurfaceStatePending)]) -> CompositorState {
     let mut state = crate::tests::test_state();
     let mut output = super::test_output(OUTPUT);
     output.geometry.physical_width = SCREEN.width;
@@ -139,12 +141,12 @@ fn state_with_layers(layers: &[(u32, LayerPending)]) -> CompositorState {
     state
 }
 
-fn reserving(anchor: u32, size: (i32, i32), zone: i32) -> LayerPending {
-    LayerPending {
+fn reserving(anchor: u32, size: (i32, i32), zone: i32) -> LayerSurfaceStatePending {
+    LayerSurfaceStatePending {
         size,
         anchor: Anchor(anchor),
         exclusive_zone: zone,
-        ..LayerPending::default()
+        ..LayerSurfaceStatePending::default()
     }
 }
 
@@ -265,13 +267,13 @@ fn layers_stack_background_bottom_top_overlay() {
     // The ordering is the drawing order, and it is the whole point of the
     // protocol: a wallpaper can never be over a window, a lock screen never
     // under one.
-    assert!(Layer::Background < Layer::Bottom);
-    assert!(Layer::Bottom < Layer::Top);
-    assert!(Layer::Top < Layer::Overlay);
-    assert!(!Layer::Background.is_above_windows());
-    assert!(!Layer::Bottom.is_above_windows());
-    assert!(Layer::Top.is_above_windows());
-    assert!(Layer::Overlay.is_above_windows());
+    assert!(LayerKind::Background < LayerKind::Bottom);
+    assert!(LayerKind::Bottom < LayerKind::Top);
+    assert!(LayerKind::Top < LayerKind::Overlay);
+    assert!(!LayerKind::Background.is_above_windows());
+    assert!(!LayerKind::Bottom.is_above_windows());
+    assert!(LayerKind::Top.is_above_windows());
+    assert!(LayerKind::Overlay.is_above_windows());
 }
 
 #[test]

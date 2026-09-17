@@ -34,7 +34,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
             handle_sync(client, msg);
         }
         GET_REGISTRY => handle_get_registry(state, msg),
-        _ => super::unknown_request(state, msg, "wl_display"),
+        _ => super::reject_unknown_request(state, msg, "wl_display"),
     }
 }
 
@@ -45,7 +45,10 @@ fn handle_sync(state: &mut super::super::state::ClientState, msg: &WaylandReques
     };
     debug!("wl_display.sync -> callback_id={}", callback_id);
 
-    if state.register(callback_id, ObjectType::WlCallback).is_err() {
+    if state
+        .register_client_object(callback_id, ObjectType::WlCallback)
+        .is_err()
+    {
         return;
     }
 
@@ -71,7 +74,7 @@ fn handle_get_registry(state: &mut CompositorState, msg: &WaylandRequestWithClie
         return;
     };
     if client
-        .register(registry_id, ObjectType::WlRegistry)
+        .register_client_object(registry_id, ObjectType::WlRegistry)
         .is_err()
     {
         return;

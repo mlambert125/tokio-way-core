@@ -32,9 +32,11 @@ fn client_with_two_xdg_surfaces() -> (CompositorState, CancellationToken, Receiv
         state.create_surface(CLIENT, surface);
         state.create_xdg_surface(CLIENT, xdg_surface, surface);
         let client = state.clients.get(CLIENT).unwrap();
-        client.register(surface, ObjectType::WlSurface).unwrap();
         client
-            .register(xdg_surface, ObjectType::XdgSurface)
+            .register_client_object(surface, ObjectType::WlSurface)
+            .unwrap();
+        client
+            .register_client_object(xdg_surface, ObjectType::XdgSurface)
             .unwrap();
     }
 
@@ -43,7 +45,7 @@ fn client_with_two_xdg_surfaces() -> (CompositorState, CancellationToken, Receiv
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(POSITIONER, ObjectType::XdgPositioner)
+        .register_client_object(POSITIONER, ObjectType::XdgPositioner)
         .unwrap();
 
     (state, token, rx)
@@ -168,7 +170,7 @@ fn client_with_a_toplevel() -> (CompositorState, CancellationToken, Receiver<Way
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(BUFFER, ObjectType::WlBuffer)
+        .register_client_object(BUFFER, ObjectType::WlBuffer)
         .unwrap();
     deliver(
         &mut state,
@@ -342,7 +344,7 @@ fn a_surface_with_no_xdg_role_needs_no_configure() {
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(BUFFER, ObjectType::WlBuffer)
+        .register_client_object(BUFFER, ObjectType::WlBuffer)
         .unwrap();
     // A plain wl_surface, with no xdg_surface wrapping it.
     state.create_surface(CLIENT, PLAIN);
@@ -350,7 +352,7 @@ fn a_surface_with_no_xdg_role_needs_no_configure() {
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(PLAIN, ObjectType::WlSurface)
+        .register_client_object(PLAIN, ObjectType::WlSurface)
         .unwrap();
 
     deliver(

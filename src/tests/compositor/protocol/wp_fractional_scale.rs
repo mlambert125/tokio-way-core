@@ -34,7 +34,7 @@ fn state_with_a_window() -> (CompositorState, Receiver<WaylandEvent>, Cancellati
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(MANAGER, ObjectType::WpFractionalScaleManager)
+        .register_client_object(MANAGER, ObjectType::WpFractionalScaleManager)
         .unwrap();
     super::super::add_toplevel(&mut state, CLIENT, SURFACE, 21, 22);
     state.buffers.insert(
@@ -120,7 +120,7 @@ fn a_surface_on_no_output_is_told_what_the_output_it_would_open_on_says() {
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(MANAGER, ObjectType::WpFractionalScaleManager)
+        .register_client_object(MANAGER, ObjectType::WpFractionalScaleManager)
         .unwrap();
     // A surface with no buffer and no window: on no output at all.
     state.create_surface(CLIENT, SURFACE);

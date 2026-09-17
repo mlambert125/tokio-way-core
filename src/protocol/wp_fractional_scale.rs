@@ -36,7 +36,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
                 client.unregister(msg.message.object_id);
             }
         }
-        _ => super::unknown_request(state, msg, INTERFACE),
+        _ => super::reject_unknown_request(state, msg, INTERFACE),
     }
 }
 

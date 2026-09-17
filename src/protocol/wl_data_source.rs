@@ -40,14 +40,14 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         OFFER => handle_offer(state, msg),
         DESTROY => handle_destroy(state, msg),
         SET_ACTIONS => handle_set_actions(state, msg),
-        _ => super::unknown_request(state, msg, "wl_data_source"),
+        _ => super::reject_unknown_request(state, msg, "wl_data_source"),
     }
 }
 
 fn handle_offer(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(mime_type) = args.string() else {
-        super::malformed_request(state, msg, "wl_data_source");
+        super::reject_malformed_request(state, msg, "wl_data_source");
         return;
     };
 
@@ -79,7 +79,7 @@ fn handle_destroy(state: &mut CompositorState, msg: &WaylandRequestWithClientInf
 fn handle_set_actions(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(actions) = args.u32() else {
-        super::malformed_request(state, msg, "wl_data_source");
+        super::reject_malformed_request(state, msg, "wl_data_source");
         return;
     };
 

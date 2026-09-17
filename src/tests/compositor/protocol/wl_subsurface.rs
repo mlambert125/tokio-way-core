@@ -38,13 +38,17 @@ fn state_with_a_subsurface() -> CompositorState {
     state.clients.create(CLIENT, tx, CancellationToken::new());
     let client = state.clients.get(CLIENT).unwrap();
     client
-        .register(SUBCOMPOSITOR, ObjectType::WlSubcompositor)
+        .register_client_object(SUBCOMPOSITOR, ObjectType::WlSubcompositor)
         .unwrap();
     for surface in [PARENT, CHILD, GRANDCHILD] {
-        client.register(surface, ObjectType::WlSurface).unwrap();
+        client
+            .register_client_object(surface, ObjectType::WlSurface)
+            .unwrap();
     }
     for buffer in [BUFFER, OTHER_BUFFER] {
-        client.register(buffer, ObjectType::WlBuffer).unwrap();
+        client
+            .register_client_object(buffer, ObjectType::WlBuffer)
+            .unwrap();
     }
     for surface in [PARENT, CHILD, GRANDCHILD] {
         state.create_surface(CLIENT, surface);

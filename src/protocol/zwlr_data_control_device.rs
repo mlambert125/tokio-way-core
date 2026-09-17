@@ -68,7 +68,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         SET_SELECTION => handle_set_selection(state, msg, Which::Clipboard),
         DESTROY => handle_destroy(state, msg),
         SET_PRIMARY_SELECTION => handle_set_selection(state, msg, Which::Primary),
-        _ => super::unknown_request(state, msg, INTERFACE),
+        _ => super::reject_unknown_request(state, msg, INTERFACE),
     }
 }
 
@@ -87,7 +87,7 @@ fn handle_set_selection(
     let mut args = ArgReader::new(&msg.message.args);
     // set_selection args: object source (nullable)
     let Some(source_id) = args.u32() else {
-        super::malformed_request(state, msg, INTERFACE);
+        super::reject_malformed_request(state, msg, INTERFACE);
         return;
     };
 
@@ -162,7 +162,8 @@ fn create_offer(
 ) -> Option<ClientObjectId> {
     let client = state.clients.get(client_id)?;
     let version = client.version(device_id);
-    let offer_id = client.allocate_id_with_version(ObjectType::ZwlrDataControlOffer, version)?;
+    let offer_id =
+        client.register_server_object_with_version(ObjectType::ZwlrDataControlOffer, version)?;
 
     let mime_types = state
         .data_sources

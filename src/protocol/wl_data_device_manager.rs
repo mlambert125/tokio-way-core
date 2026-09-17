@@ -34,7 +34,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     match msg.message.op_code {
         CREATE_DATA_SOURCE => handle_create_data_source(state, msg),
         GET_DATA_DEVICE => handle_get_data_device(state, msg),
-        _ => super::unknown_request(state, msg, "wl_data_device_manager"),
+        _ => super::reject_unknown_request(state, msg, "wl_data_device_manager"),
     }
 }
 
@@ -65,7 +65,7 @@ fn handle_create_data_source(state: &mut CompositorState, msg: &WaylandRequestWi
     // run and none of its results would ever reach the client.
     let version = client.version(msg.message.object_id);
     if client
-        .register_with_version(source_id, ObjectType::WlDataSource, version)
+        .register_client_object_with_version(source_id, ObjectType::WlDataSource, version)
         .is_err()
     {
         return;
@@ -114,7 +114,7 @@ fn handle_get_data_device(state: &mut CompositorState, msg: &WaylandRequestWithC
     // sending a short request is still caught as malformed.
     let version = client.version(msg.message.object_id);
     if client
-        .register_with_version(device_id, ObjectType::WlDataDevice, version)
+        .register_client_object_with_version(device_id, ObjectType::WlDataDevice, version)
         .is_err()
     {
         return;

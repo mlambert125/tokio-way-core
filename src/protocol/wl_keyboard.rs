@@ -39,7 +39,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
                 client.unregister(keyboard_id);
             }
         }
-        _ => super::unknown_request(state, msg, "wl_keyboard"),
+        _ => super::reject_unknown_request(state, msg, "wl_keyboard"),
     }
 }
 

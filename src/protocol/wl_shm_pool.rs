@@ -101,7 +101,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         CREATE_BUFFER => handle_create_buffer(state, msg),
         DESTROY => handle_destroy(state, msg),
         RESIZE => handle_resize(state, msg),
-        _ => super::unknown_request(state, msg, "wl_shm_pool"),
+        _ => super::reject_unknown_request(state, msg, "wl_shm_pool"),
     }
 }
 
@@ -127,7 +127,7 @@ fn handle_create_buffer(state: &mut CompositorState, msg: &WaylandRequestWithCli
         args.i32(),
         args.u32(),
     ) else {
-        super::malformed_request(state, msg, "wl_shm_pool");
+        super::reject_malformed_request(state, msg, "wl_shm_pool");
         return;
     };
 
@@ -152,7 +152,10 @@ fn handle_create_buffer(state: &mut CompositorState, msg: &WaylandRequestWithCli
         return;
     }
 
-    if client.register(buffer_id, ObjectType::WlBuffer).is_err() {
+    if client
+        .register_client_object(buffer_id, ObjectType::WlBuffer)
+        .is_err()
+    {
         return;
     }
     state.register_buffer(
@@ -181,7 +184,7 @@ fn handle_destroy(state: &mut CompositorState, msg: &WaylandRequestWithClientInf
 fn handle_resize(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(new_size) = args.i32() else {
-        super::malformed_request(state, msg, "wl_shm_pool");
+        super::reject_malformed_request(state, msg, "wl_shm_pool");
         return;
     };
     let pool_id = msg.message.object_id;

@@ -21,7 +21,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         DESTROY => handle_destroy(state, msg),
         ADD => handle_add(state, msg),
         SUBTRACT => handle_subtract(state, msg),
-        _ => super::unknown_request(state, msg, "wl_region"),
+        _ => super::reject_unknown_request(state, msg, "wl_region"),
     }
 }
 
@@ -51,7 +51,7 @@ fn push_rect(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo, op
     let (Some(x), Some(y), Some(width), Some(height)) =
         (args.i32(), args.i32(), args.i32(), args.i32())
     else {
-        super::malformed_request(state, msg, "wl_region");
+        super::reject_malformed_request(state, msg, "wl_region");
         return;
     };
     let region_id = msg.message.object_id;

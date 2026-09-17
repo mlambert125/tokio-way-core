@@ -9,5 +9,5 @@ use tokio_way_sock::WaylandRequestWithClientInfo;
 use super::super::state::CompositorState;
 
 pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
-    super::unknown_request(state, msg, "wl_callback");
+    super::reject_unknown_request(state, msg, "wl_callback");
 }

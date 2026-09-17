@@ -47,7 +47,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     match msg.message.op_code {
         DESTROY => handle_destroy(state, msg),
         CREATE_PARAMS => handle_create_params(state, msg),
-        _ => super::unknown_request(state, msg, "zwp_linux_dmabuf_v1"),
+        _ => super::reject_unknown_request(state, msg, "zwp_linux_dmabuf_v1"),
     }
 }
 
@@ -101,7 +101,7 @@ fn handle_create_params(state: &mut CompositorState, msg: &WaylandRequestWithCli
     }
 
     if client
-        .register(params_id, ObjectType::ZwpLinuxBufferParams)
+        .register_client_object(params_id, ObjectType::ZwpLinuxBufferParams)
         .is_err()
     {
         return;

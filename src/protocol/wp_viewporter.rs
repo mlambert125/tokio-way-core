@@ -27,7 +27,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
             }
         }
         GET_VIEWPORT => handle_get_viewport(state, msg),
-        _ => super::unknown_request(state, msg, "wp_viewporter"),
+        _ => super::reject_unknown_request(state, msg, "wp_viewporter"),
     }
 }
 
@@ -39,7 +39,7 @@ fn handle_get_viewport(state: &mut CompositorState, msg: &WaylandRequestWithClie
 
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(viewport_id), Some(surface_id)) = (args.new_id(), args.u32()) else {
-        super::malformed_request(state, msg, "wp_viewporter");
+        super::reject_malformed_request(state, msg, "wp_viewporter");
         return;
     };
 
@@ -62,7 +62,7 @@ fn handle_get_viewport(state: &mut CompositorState, msg: &WaylandRequestWithClie
     }
 
     if client
-        .register(viewport_id, ObjectType::WpViewport)
+        .register_client_object(viewport_id, ObjectType::WpViewport)
         .is_err()
     {
         return;

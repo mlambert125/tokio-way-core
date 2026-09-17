@@ -33,7 +33,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
                 tracing::warn!("Received message from unknown client {}", msg.client_id);
             }
         }
-        _ => super::unknown_request(state, msg, "wl_output"),
+        _ => super::reject_unknown_request(state, msg, "wl_output"),
     }
 }
 

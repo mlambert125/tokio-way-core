@@ -56,7 +56,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
                 tracing::warn!("Received message from unknown client {}", msg.client_id);
             }
         }
-        _ => super::unknown_request(state, msg, "wl_pointer"),
+        _ => super::reject_unknown_request(state, msg, "wl_pointer"),
     }
 }
 
@@ -65,7 +65,7 @@ fn process_set_cursor(state: &mut CompositorState, msg: &WaylandRequestWithClien
     let (Some(serial), Some(surface_id), Some(hotspot_x), Some(hotspot_y)) =
         (args.u32(), args.u32(), args.i32(), args.i32())
     else {
-        super::malformed_request(state, msg, "wl_pointer");
+        super::reject_malformed_request(state, msg, "wl_pointer");
         return;
     };
 

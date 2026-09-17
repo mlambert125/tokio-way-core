@@ -29,7 +29,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
             }
         }
         GET_TOPLEVEL_DECORATION => handle_get_toplevel_decoration(state, msg),
-        _ => super::unknown_request(state, msg, "zxdg_decoration_manager_v1"),
+        _ => super::reject_unknown_request(state, msg, "zxdg_decoration_manager_v1"),
     }
 }
 
@@ -69,7 +69,7 @@ fn handle_get_toplevel_decoration(state: &mut CompositorState, msg: &WaylandRequ
     }
 
     if client
-        .register(decoration_id, ObjectType::ZxdgToplevelDecoration)
+        .register_client_object(decoration_id, ObjectType::ZxdgToplevelDecoration)
         .is_err()
     {
         return;

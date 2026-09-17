@@ -1,7 +1,4 @@
 //! Global compositor state.
-//!
-//! `CompositorState` holds everything shared across all clients: the client
-//! collection, shm pools, buffers, surfaces, and (eventually) outputs, etc.
 
 use super::client_state::Clients;
 use crate::Settings;
@@ -24,36 +21,16 @@ use tokio_way_backends::outputs::{Output, OutputId, Scale, cursor_bounds, output
 use tokio_way_backends::scene_graph::{BufferTransform, TextureRect};
 use tokio_way_backends::shm::{BufferGuard, PoolMapping};
 
-/// The furthest a surface may sit from its parent, in either direction.
-///
-/// A `wl_subsurface.set_position` is a raw `i32` from the client, and the
-/// protocol puts no bound on it. Those offsets accumulate down a subsurface
-/// tree and are then added to an output origin, so an unclamped one overflows
-/// the arithmetic that hit-tests and composes the tree — a panic in a debug
-/// build, which takes every client down with it, and a wrapped coordinate in a
-/// release build, which is worse for being quiet.
-///
-/// A megapixel in each direction is orders of magnitude past any desktop and
-/// still leaves room for a thousand levels of nesting before an accumulated
-/// offset could reach `i32::MAX`. Positions beyond it are clamped rather than
-/// refused: the protocol allows them, and a surface placed a million pixels
-/// away is off-screen either way.
+/// The furthest a surface may sit from its parent, in either direction
 pub const MAX_SURFACE_OFFSET: i32 = 1 << 20;
 
-/// The most planes a buffer can have, per `zwp_linux_buffer_params_v1`.
+/// The most planes a buffer can have, per `zwp_linux_buffer_params_v1`
 pub const MAX_DMABUF_PLANES: usize = 4;
 
 /// How long the visual bell stays on screen.
-///
-/// Long enough to be seen at a glance, short enough not to be in the way — a
-/// bell is an alert, and one that outstays it becomes an obstruction.
 const BELL_DURATION: Duration = Duration::from_millis(120);
 
-/// How many input serials are remembered per client for
-/// [`CompositorState::recent_input_serials`].
-///
-/// Long enough to cover any batch a client could reasonably be working through,
-/// short enough that a stale serial from minutes ago is not still honoured.
+/// How many input serials are remembered per client for [`CompositorState::recent_input_serials`].
 const RECENT_INPUT_SERIALS: usize = 32;
 
 /// A client object-id tuple holding a `client_id` paired with an object id.  This pair
@@ -70,21 +47,13 @@ pub struct ShmPool {
     pub fd: RawFd,
     /// The size of the shared memory
     pub size: u32,
-    /// A live mmap of the shared memory.
-    /// `None` if the mapping failed; the pool then renders nothing.
+    /// A live mmap of the shared memory. `None` if the mapping failed
     pub mapping: Option<Arc<PoolMapping>>,
-    /// True after `wl_shm_pool.destroy` — the pool will be freed once no
-    /// buffers reference it.
+    /// True after `wl_shm_pool.destroy` - the pool will be freed once no buffers reference it
     pub dead: bool,
 }
 
-/// A client `wl_buffer`, whatever kind of memory is behind it.
-///
-/// The fields here are the ones every buffer has, and they are what almost
-/// everything asks for: how big it is, whose it is, and whether its contents
-/// have changed. Where the pixels actually live is [`BufferKind`], mirroring
-/// the same split [`tokio_way_backends::scene_graph::TextureImage`] makes for the texture it
-/// eventually becomes.
+/// A client `wl_buffer`, whatever kind of memory is behind it
 #[derive(Debug)]
 pub struct Buffer {
     /// Client owning the buffer
@@ -93,23 +62,14 @@ pub struct Buffer {
     pub width: i32,
     /// Height of this buffer in pixels
     pub height: i32,
-    /// Identifies the current contents of this buffer.
-    ///
-    /// Drawn from a counter that never repeats, so a buffer id reused after
-    /// destruction cannot collide with the old one, and anything holding a
-    /// copy can tell whether it is still current by comparing serials alone.
-    ///
-    /// Only an shm buffer's serial ever changes. A dma-buf is sampled where it
-    /// lies, so a client drawing into one changes what is on screen without
-    /// anything crossing to the backend — and bumping the serial there would
-    /// make the backend re-import a buffer it already holds, every frame.
+    /// Identifies the current contents of this buffer
     pub content_serial: u64,
-    /// Where the pixels live.
+    /// Where the pixels live
     pub kind: BufferKind,
 }
 
 impl Buffer {
-    /// The shm details, for the pool bookkeeping that only applies to those.
+    /// The shm details, for pool bookkeeping (None if it's not Shm)
     pub fn shm(&self) -> Option<&ShmBuffer> {
         match &self.kind {
             BufferKind::Shm(shm) => Some(shm),
@@ -117,7 +77,7 @@ impl Buffer {
         }
     }
 
-    /// The shm details, for modification.
+    /// Mutable shm details, for pool bookkeeping (None if it's not Shm)
     pub fn shm_mut(&mut self) -> Option<&mut ShmBuffer> {
         match &mut self.kind {
             BufferKind::Shm(shm) => Some(shm),
@@ -126,24 +86,17 @@ impl Buffer {
     }
 }
 
-/// What kind of memory is behind a `wl_buffer`.
+/// What kind of memory is behind a `wl_buffer`
 #[derive(Debug)]
 pub enum BufferKind {
-    /// Client memory the compositor maps and the backend uploads from.
+    /// Client shm memory the compositor maps and the backend uploads from
     Shm(ShmBuffer),
-    /// A GPU buffer the backend imports and samples in place. Shared so that
-    /// the count of live readers is the count of `Arc`s, which is what holds
-    /// `wl_buffer.release` back — the same trick the shm path plays with
-    /// [`tokio_way_backends::shm::BufferGuard`].
+    /// A GPU buffer the backend imports and samples in place.
+    /// Arc so that we can keep track of who is using it.
     #[allow(dead_code)]
     Dmabuf(Arc<tokio_way_backends::dma::DmabufImage>),
-    /// A buffer the compositor could not make good on: the client named a
-    /// dma-buf the driver would not import, after it had already been given
-    /// the object id and so could not be refused.
-    ///
-    /// It draws nothing. Tearing the object down instead would be worse than
-    /// useless — the client still owns that id and will destroy it later, and
-    /// an id the compositor has forgotten disconnects the client on sight.
+    /// A buffer the compositor could not make good on.  It's invalid, but we
+    /// have to present nothing/black because its already negotiated.
     #[allow(dead_code)]
     Failed,
 }
@@ -158,65 +111,41 @@ pub struct ShmBuffer {
     pub offset: i32,
     /// Actual byte length of each row in this buffer (includes padding, etc.)
     pub stride: i32,
-    /// Format of this buffer, in `wl_shm`'s numbering rather than the DRM
-    /// fourcc a dma-buf carries.
+    /// Format of this buffer, in `wl_shm`'s numbering rather than the DRM fourcc a dma-buf carries
     pub format: u32,
-    /// What changed since the damage was last consumed, in buffer pixels.
-    ///
-    /// `None` means "assume everything" — the client told us nothing, the
-    /// buffer is new, or its mapping moved. Damage is a promise about what did
-    /// *not* change, so anything uncertain has to widen to the whole buffer.
-    /// `Some` is exact, and an empty `Some` means nothing has changed since it
-    /// was last read, which is why the two cannot share a representation.
-    ///
-    /// Only meaningful for an upload: a dma-buf has nothing to re-send.
+    /// What changed since the damage was last consumed, in buffer pixels
     pub damage: Option<Vec<TextureRect>>,
 }
 
+/// A pending surface (building, but not yet flipped)
 #[derive(Debug, Default, Clone)]
 pub struct SurfacePending {
+    /// Is the buffer attached
     pub buffer_attached: bool,
+    /// The buffer
     pub buffer_id: Option<u32>,
     /// `wl_surface.damage` rectangles, in surface-local coordinates.
     pub damage_surface: Vec<TextureRect>,
     /// `wl_surface.damage_buffer` rectangles, already in buffer coordinates.
     pub damage_buffer: Vec<TextureRect>,
-    /// `wl_surface.frame` callbacks requested since the last commit, oldest
-    /// first. A list rather than one slot: nothing stops a client asking more
-    /// than once before committing, and in practice a toolkit and the EGL
-    /// implementation under it each ask on their own account — see
-    /// [`Surface::frame_callbacks`].
+    /// `wl_surface.frame` callbacks requested since the last commit, oldest first.
     pub frame_callbacks: Vec<u32>,
+    /// Presentation feedback ids
     pub presentation_feedbacks: Vec<u32>,
+    /// Pending input region
     pub input_region: PendingRegion,
-    /// Pending `wl_surface.set_opaque_region`.
+    /// Pending opaque region
     pub opaque_region: PendingRegion,
-    /// Pending `wl_surface.set_buffer_scale`.
+    /// Pending buffer scale
     pub buffer_scale: Option<i32>,
-    /// Pending `wl_surface.set_buffer_transform`.
+    /// Pending buffer transform
     pub buffer_transform: Option<BufferTransform>,
-    /// Pending offset from `wl_surface.attach`'s `dx`/`dy`, or
-    /// `wl_surface.offset`. Accumulates across attaches within one commit,
-    /// which is what the protocol says it does.
+    /// Pending offset
     pub offset: (i32, i32),
 }
 
 impl SurfacePending {
-    /// Fold a newer commit's state into this one.
-    ///
-    /// A synchronised subsurface may commit any number of times before its
-    /// parent does, and the protocol says the cache *accumulates* rather than
-    /// being replaced — so this is the same merge the cache performs each time.
-    ///
-    /// The fields do not all merge the same way, and the differences are the
-    /// protocol's. Damage and callbacks accumulate, because every rectangle
-    /// reported still changed and every callback is still owed its `done`.
-    /// Scale, transform and the regions replace, because a later request
-    /// supersedes an earlier one outright. The attach offset accumulates,
-    /// which is what `wl_surface.offset` says it does. And a buffer only
-    /// replaces if the newer commit actually attached one: a commit that
-    /// attaches nothing leaves the cached attach standing rather than
-    /// cancelling it.
+    /// Fold a newer commit's state into this one
     pub fn merge(&mut self, newer: Self) {
         if newer.buffer_attached {
             self.buffer_attached = true;
@@ -248,85 +177,46 @@ impl SurfacePending {
 
 #[derive(Debug)]
 pub struct Surface {
+    /// The client that owns the surface
     pub client_id: u32,
+    /// The id of the buffer for this surface
     pub buffer_id: Option<u32>,
-    /// Committed `wl_surface.frame` callbacks awaiting a frame, oldest first.
-    ///
-    /// All of them are owed a `done`, in the order they were committed — the
-    /// protocol says so outright, and a client is entitled to more than one
-    /// outstanding at a time. This is not a theoretical case: a GL client
-    /// typically has two independent askers on the same surface, its own paint
-    /// scheduler and the EGL implementation's swap throttle, and keeping only
-    /// the newest silently strands whichever asked first. Whoever is waiting on
-    /// the dropped one then never draws again.
+    /// Committed `wl_surface.frame` callbacks awaiting a frame, oldest first
     pub frame_callbacks: Vec<u32>,
+    /// Committed presentation feedback ids
     pub presentation_feedbacks: Vec<u32>,
+    /// The surface back buffer before flip
     pub pending: SurfacePending,
+    /// The parent surface id (for a subsurface or popup, etc.)
     pub parent: Option<u32>,
+    /// The direct children surfaces
     pub children: Vec<u32>,
+    /// Relative position if this is a subsurface or popup
     pub subsurface_position: (i32, i32),
-    /// Whether this surface got its parent from `wl_subcompositor`.
-    ///
-    /// Not the same as having a parent at all: an `xdg_popup` is parented
-    /// through the same two fields and is emphatically not a subsurface. Only
-    /// a subsurface has a commit mode, so only a subsurface can be
-    /// synchronised — and asking "does it have a parent" instead would put
-    /// every popup into a cache it never leaves.
+    /// Whether this surface got its parent from `wl_subcompositor`
     pub is_subsurface: bool,
-    /// The commit mode from `wl_subsurface.set_sync`/`set_desync`.
-    ///
-    /// A subsurface starts synchronised, which the protocol requires: it is
-    /// created to be part of its parent's next frame, not to appear on its own
-    /// before the parent has said where it goes.
+    /// The commit mode from `wl_subsurface.set_sync`/`set_desync`
     pub subsurface_sync: bool,
-    /// State committed while synchronised, waiting for the parent.
-    ///
-    /// This is the whole point of synchronised mode. A commit here does not
-    /// reach the screen; it lands in the cache, and the cache is applied when
-    /// the parent's own state is — which is what makes a window and its
-    /// subsurfaces update in one piece instead of tearing against each other.
+    /// Temporary state if this is a subsurface and committed while synchronised,
+    /// waiting for the parent to actually commit
     pub cached: Option<SurfacePending>,
+    /// Position of this surface
     pub position: (i32, i32),
-    /// Which parts of the surface accept pointer input, in surface-local
-    /// coordinates. `None` is the protocol default: the whole surface does.
+    /// Input region for this surface
     pub input_region: Option<Vec<RegionRect>>,
-    /// Which parts of the surface the client promises are fully opaque, in
-    /// surface-local coordinates. `None` is the protocol default: none of it.
-    ///
-    /// A promise rather than a description — the compositor may skip alpha
-    /// blending where it holds, and gets the wrong picture if it does not, so
-    /// it is only acted on where a client has stated it outright.
+    /// Opaque region for this surface
     pub opaque_region: Option<Vec<RegionRect>>,
-    /// How many buffer pixels map to one surface-local coordinate. Clients on a
-    /// scaled output submit a correspondingly larger buffer, so the surface's
-    /// logical size is its buffer size divided by this. Always at least 1.
+    /// Buffer pixels to surface-local coorinate
     pub buffer_scale: i32,
-    /// How the client has already transformed its buffer. The compositor undoes
-    /// it when drawing, and swaps the surface's width and height for the
-    /// quarter-turn cases.
+    /// How the client has already transformed its buffer
     pub buffer_transform: BufferTransform,
-    /// Where the surface's contents sit relative to where they would
-    /// otherwise, from `wl_surface.attach`'s `dx`/`dy` and `wl_surface.offset`.
-    ///
-    /// Read only by the drag icon, which is the one surface whose position is
-    /// *defined* by it — a client centres its icon under the pointer this way
-    /// and has no other means to. Applying it to ordinary surfaces is a larger
-    /// question about how a surface repositions itself on attach, and is
-    /// deliberately left alone here rather than changed in passing.
+    /// Where the surface's contents sit relative to where they would otherwise,
+    /// from `wl_surface.attach`'s `dx`/`dy` and `wl_surface.offset`. (Read only
+    /// by the drag icon.)
     pub offset: (i32, i32),
-    /// Outputs the client has been told this surface is on, via
-    /// `wl_surface.enter`. Diffed each frame so only changes are sent.
+    /// Outputs the client has been told this surface is on
     pub entered_outputs: HashSet<OutputId>,
-    /// Outputs actually showing this surface.
-    ///
-    /// Not the same thing as [`Self::entered_outputs`], and the difference
-    /// matters: a client is only told about an output it has bound, so a
-    /// client that never binds `wl_output` has an empty `entered_outputs` for
-    /// a surface in plain view. This is what the compositor knows rather than
-    /// what the client has been told, which is what deciding whose frame
-    /// callbacks an output's presentation settles has to be based on. Empty
-    /// means no display is showing it — unmapped, or on a workspace that is
-    /// not on screen.
+    /// Outputs actually showing this surface
     pub visible_on: HashSet<OutputId>,
 }
 
@@ -343,94 +233,92 @@ pub struct PendingPlane {
 /// A `zwp_linux_buffer_params_v1`: a buffer being described one plane at a time.
 #[derive(Debug, Default)]
 pub struct BufferParams {
-    /// Planes by index, as the client set them. Sparse until `create`, which is
-    /// where a gap becomes an error.
+    /// Planes by index
     pub planes: [Option<PendingPlane>; MAX_DMABUF_PLANES],
     /// Set by `create`/`create_immed`. The object is single-use, so everything
-    /// after that is a protocol error — including a second create, which is why
-    /// this is set before the import is dispatched rather than once it lands.
+    /// after that is a protocol error, which is why this is set before the import
+    /// is dispatched rather than once it lands.
     pub used: bool,
 }
 
-/// A dma-buf import the backend has been asked about and has not answered.
-///
-/// The verdict arrives some frames later, by which time the client may have
-/// destroyed the params object, destroyed the buffer, or disconnected — so what
-/// is needed to check that is recorded here rather than looked up hopefully.
+/// A pending import. A dma-buf import the backend has been asked about and has not answered.
 #[derive(Debug)]
 pub struct PendingImport {
-    /// Client that asked.
+    /// Client that asked
     pub client_id: u32,
-    /// The params object to answer on, if it still exists.
+    /// The params object to answer on, if it still exists
     pub params_id: u32,
-    /// For `create_immed`, the buffer already registered and the serial it was
-    /// registered with. A client may destroy that id and reuse it before the
-    /// verdict lands, and the serial is what tells the two buffers apart.
+    /// For `create_immed`, the buffer already registered and the serial it was registered with.
+    /// A client may destroy that id and reuse it before the verdict lands, and the serial
+    /// is what tells the two buffers apart.
     pub immediate: Option<(u32, u64)>,
-    /// The buffer being imported, kept alive until the verdict.
+    /// The buffer being imported, kept alive until the verdict
     pub image: Arc<DmabufImage>,
-    /// Width, for registering the buffer once the verdict is good.
+    /// Width, for registering the buffer once the verdict is good
     pub width: i32,
-    /// Height, likewise.
+    /// Height
     pub height: i32,
 }
 
-/// Which band of the stack a layer surface sits in.
-///
-/// The whole point of the protocol: a wallpaper has to be under every window
-/// and a lock screen over every one, and neither is a thing `xdg_shell` can
-/// say. Ordered, because that ordering *is* the drawing order.
+/// Layer shell layer
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, FromRepr)]
 #[repr(u32)]
-pub enum Layer {
-    /// Under everything. Wallpapers.
+pub enum LayerKind {
+    /// Under everything. Wallpapers
     #[default]
     Background = 0,
-    /// Under ordinary windows, over the wallpaper. Docks that windows cover.
+    /// Under ordinary windows, over the wallpaper. Widgets that windows cover.
     Bottom = 1,
     /// Over ordinary windows. Panels and bars.
     Top = 2,
-    /// Over everything. Lock screens, notifications.
+    /// Over everything. Lock screens, notifications, even fullscreen apps.
     Overlay = 3,
 }
 
-impl Layer {
+impl LayerKind {
     /// Whether this layer draws over ordinary windows.
     pub fn is_above_windows(self) -> bool {
         matches!(self, Self::Top | Self::Overlay)
     }
 }
 
-/// Which edges a layer surface is anchored to, as `zwlr_layer_surface_v1`
-/// numbers them.
+/// Which edges a layer surface is anchored to, as `zwlr_layer_surface_v1` numbers them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Anchor(pub u32);
 
 impl Anchor {
+    /// Top
     pub const TOP: u32 = 1;
+    /// Bottom
     pub const BOTTOM: u32 = 2;
+    /// Left
     pub const LEFT: u32 = 4;
+    /// Right
     pub const RIGHT: u32 = 8;
-    /// Every bit the protocol defines. Anything outside it is `invalid_anchor`.
+    /// All of the
     pub const ALL: u32 = 0b1111;
 
+    /// Is this anchored to the top
     pub fn top(self) -> bool {
         self.0 & Self::TOP != 0
     }
+    /// Is this anchored to the bottom
     pub fn bottom(self) -> bool {
         self.0 & Self::BOTTOM != 0
     }
+    /// Is this anchored to the left
     pub fn left(self) -> bool {
         self.0 & Self::LEFT != 0
     }
+    /// Is this anchored to the right
     pub fn right(self) -> bool {
         self.0 & Self::RIGHT != 0
     }
-    /// Anchored to both ends of an axis, which is what makes a surface stretch
-    /// along it rather than be placed at one end.
+    /// Anchored to both sides of the horizontal axis
     pub fn spans_horizontally(self) -> bool {
         self.left() && self.right()
     }
+    /// Anchored to both sides of the vertical axis
     pub fn spans_vertically(self) -> bool {
         self.top() && self.bottom()
     }
@@ -443,23 +331,18 @@ pub enum KeyboardInteractivity {
     /// Never focused. A wallpaper, a bar that is only clicked.
     #[default]
     None = 0,
-    /// Takes the keyboard for as long as it exists, over any window. A lock
-    /// screen.
+    /// Takes the keyboard for as long as it exists, over any window. (e.g. lock screen)
     Exclusive = 1,
-    /// Focused when the user clicks it, like an ordinary window.
+    /// Focused when the user clicks it, like an normal window.
     OnDemand = 2,
 }
 
 /// The double-buffered state of a layer surface.
-///
-/// All of it applies at commit, like every other surface property: a panel
-/// that changed its anchor and its size wants both to land in the same frame,
-/// not a frame apart with the window in between.
 #[derive(Debug, Clone, Default)]
-pub struct LayerPending {
-    /// The size asked for. Zero on an axis means "as big as the anchor makes
-    /// me", which is only legal if anchored to both edges of that axis.
+pub struct LayerSurfaceStatePending {
+    /// The size asked for. Zero on an axis means "as big as the anchor makes me"
     pub size: (i32, i32),
+    /// The anchor(s)
     pub anchor: Anchor,
     /// How much room to reserve for this surface along the edge it is anchored
     /// to, so windows do not go under it. Negative means the surface wants no
@@ -467,57 +350,66 @@ pub struct LayerPending {
     pub exclusive_zone: i32,
     /// Gaps outside the surface, in the order the protocol sends them.
     pub margin: (i32, i32, i32, i32),
+    /// Keyboard interactivity
     pub keyboard_interactivity: KeyboardInteractivity,
-    pub layer: Layer,
+    /// The kind of layer
+    pub layer: LayerKind,
 }
 
-/// A `zwlr_layer_surface_v1`: a panel, bar, wallpaper or lock screen.
+/// A `zwlr_layer_surface_v1`: a panel, bar, wallpaper or lock screen
 #[derive(Debug)]
 pub struct LayerSurfaceState {
     pub client_id: u32,
-    /// The `wl_surface` this gives a role to.
+    /// The `wl_surface` this gives a role to
     pub wl_surface_id: u32,
-    /// The output it belongs to. `None` means the client let the compositor
-    /// choose, and it is resolved to a real output before anything is drawn.
+    /// The output it belongs to. `None` means the client let the compositor choose
     pub output: Option<OutputId>,
-    /// What the client has asked for and not yet committed.
-    pub pending: LayerPending,
-    /// What is in force.
-    pub current: LayerPending,
+    /// What the client has asked for and not yet committed
+    pub pending: LayerSurfaceStatePending,
+    /// What is currently active
+    pub current: LayerSurfaceStatePending,
     /// The client's own name for it, for a compositor with per-namespace
     /// policy. Kept because the protocol says it is immutable and clients use
     /// it to identify themselves in logs.
     pub namespace: String,
-    /// Whether a configure has been acknowledged. A layer surface may not show
-    /// content before one, exactly as an `xdg_surface` may not.
+    /// Whether a configure has been acknowledged. Don't show it before this.
     pub configured: bool,
-    /// Serials sent and not yet acknowledged — the same bookkeeping
-    /// `xdg_surface` keeps, and for the same reasons.
+    /// Serials sent and not yet acknowledged
     pub pending_configures: VecDeque<u32>,
+    /// Highest configure
     pub highest_configure: u32,
-    /// The geometry last configured, so an unchanged one sends nothing.
+    /// The geometry last configured, so an unchanged one sends nothing
     pub configured_size: Option<(i32, i32)>,
 }
 
-/// A `zxdg_toplevel_decoration_v1` object, bound to one `xdg_toplevel`.
+/// A `zxdg_toplevel_decoration_v1` object, bound to one `xdg_toplevel`
 ///
-/// Carries no mode of its own: the compositor's answer comes straight from
+/// Carries no mode of its own. The answer to that comes straight from
 /// config (see [`crate::protocol::zxdg_toplevel_decoration::send_configure`]),
-/// so all this holds is enough to find the object again — to refuse a second
+/// so all this holds is enough to find the object again - to refuse a second
 /// one on the same toplevel, and to forget it if the toplevel goes first.
 #[derive(Debug)]
 pub struct DecorationState {
+    /// The client owning the decoration state
     pub client_id: u32,
+    /// The `xdg_toplevel` that this decoration applies to
     pub toplevel_id: u32,
 }
 
+/// Viewport state for a surface to crop/scale a surface
 #[derive(Debug)]
 pub struct ViewportState {
+    /// The client owning the viewport state
     pub client_id: u32,
+    /// The surface that this applies to
     pub surface_id: u32,
+    /// The source rectangle
     pub source: Option<(f64, f64, f64, f64)>,
+    /// The destination rectangle to map onto
     pub destination: Option<(i32, i32)>,
+    /// Pending version of the source rectangle
     pub pending_source: Option<(f64, f64, f64, f64)>,
+    /// Pending version of the destination rectangle
     pub pending_destination: Option<(i32, i32)>,
 }
 
@@ -526,105 +418,117 @@ pub struct ViewportState {
 pub struct BufferMapping {
     /// Source rectangle in buffer pixels: (x, y, width, height).
     pub src: (f64, f64, f64, f64),
-    /// Destination size in surface coordinates.
+    /// Destination width
     pub dest_width: i32,
+    /// Destination height
     pub dest_height: i32,
 }
 
 /// Which edges of a window an interactive resize is dragging.
 ///
-/// The bit values are `xdg_toplevel.resize_edge`, passed straight through from
-/// the client.
+/// The bit values are `xdg_toplevel.resize_edge`, passed by the client.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ResizeEdges(pub u32);
 
 impl ResizeEdges {
+    /// The top edge
     pub const TOP: u32 = 1;
+    /// The bottom edge
     pub const BOTTOM: u32 = 2;
+    /// The left edge
     pub const LEFT: u32 = 4;
+    /// The right edge
     pub const RIGHT: u32 = 8;
 
+    /// Is top one of the resize edges
     pub fn top(self) -> bool {
         self.0 & Self::TOP != 0
     }
+    /// Is bottom one of the resize edges
     pub fn bottom(self) -> bool {
         self.0 & Self::BOTTOM != 0
     }
+    /// Is left one of the resize edges
     pub fn left(self) -> bool {
         self.0 & Self::LEFT != 0
     }
+    /// Is right one of the resize edges
     pub fn right(self) -> bool {
         self.0 & Self::RIGHT != 0
     }
 }
 
-/// What an interactive grab is doing to the window it holds.
+/// What an interactive grab is doing to the window it holds with state
 #[derive(Debug, Clone, Copy)]
 pub enum GrabKind {
-    /// Dragging the window. The offset from pointer to window origin is held
-    /// constant, so the window keeps its grip point under the cursor.
+    /// Moving the window
     Move { offset_x: i32, offset_y: i32 },
-    /// Dragging an edge or corner. Everything is measured from where the drag
-    /// began, so the window cannot drift from accumulated rounding.
+    /// Resizing the window
     Resize {
+        /// Edges grabbed
         edges: ResizeEdges,
+        /// The starting pointer position
         start_pointer: (f64, f64),
+        /// The initial size before the grab/resize
         start_size: (i32, i32),
         /// Last size sent to the client, so an unchanged size sends nothing.
         last_sent: (i32, i32),
     },
 }
 
-/// The fixed edges of a window mid-resize, and the size it was last asked
-/// to become.
-///
-/// The other half of a resize grab. Pointer motion only *asks* the client
-/// for sizes; position is derived here, from each size the client actually
-/// commits, so the anchored edges never move however far the client lags —
-/// see [`CompositorState::apply_resize_anchor`].
+/// The fixed edges of a window mid-resize, and the size it was last asked to become
 #[derive(Debug, Clone, Copy)]
 pub struct ResizeAnchor {
-    /// The toplevel's `wl_surface` key.
+    /// The toplevel's `wl_surface` key
     pub surface: ClientObjectId,
-    /// Which edges the drag moves; the opposite ones are the anchor.
+    /// Which edges the drag moves - the opposite ones are the anchor
     pub edges: ResizeEdges,
-    /// Global x of the right edge when the grab started.
+    /// Global x of the right edge when the grab started
     pub right: i32,
-    /// Global y of the bottom edge when the grab started.
+    /// Global y of the bottom edge when the grab started
     pub bottom: i32,
 }
 
-/// An interactive move or resize the compositor is driving.
+/// An interactive move or resize the compositor is driving
 ///
 /// While one is held the compositor owns the pointer: motion and buttons drive
 /// the grab instead of reaching the client, which is what "grab" means.
 #[derive(Debug, Clone, Copy)]
 pub struct PointerGrab {
-    /// The toplevel's `wl_surface`, the same key a workspace's stack uses.
+    /// The toplevel's `wl_surface`
     pub surface: ClientObjectId,
-    /// The `xdg_toplevel` object, needed to configure a resize.
+    /// The `xdg_toplevel` object, needed to configure a resize
     pub toplevel: ClientObjectId,
+    /// What kind of grab (move or resize)
     pub kind: GrabKind,
 }
 
-/// Whether a rectangle adds to or subtracts from a region.
+/// Whether a rectangle adds to or subtracts from a region
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RegionOp {
+    /// Add
     Add,
+    /// Subtract
     Subtract,
 }
 
-/// One add/subtract rectangle from a `wl_region`.
+/// One add/subtract rectangle from a `wl_region`
 #[derive(Debug, Clone, Copy)]
 pub struct RegionRect {
+    /// Is this rectangle part of the region (add) or a hole (subtract)
     pub op: RegionOp,
+    /// x coordinate of the top-left corner
     pub x: i32,
+    /// y coordinate of the top-left corner
     pub y: i32,
+    /// The width of the rectangle
     pub width: i32,
+    /// The height of the rectangle
     pub height: i32,
 }
 
 impl RegionRect {
+    /// Check if this rectangle contains the point
     fn contains(self, x: i32, y: i32) -> bool {
         x >= self.x
             && y >= self.y
@@ -633,122 +537,106 @@ impl RegionRect {
     }
 }
 
-/// A `wl_surface.set_input_region` or `set_opaque_region` waiting to be applied
-/// at the next commit.
+/// A region waiting to be applied at the next commit
 #[derive(Debug, Default, Clone)]
 pub enum PendingRegion {
-    /// The client has not set an input region since the last commit.
+    /// The client has not set an input region since the last commit
     #[default]
     Unchanged,
-    /// Reset to the protocol default, which the null region argument means:
-    /// the whole surface accepts input, or none of it is opaque.
+    /// Default (everything for input regions, nothing for opaque)
     Infinite,
-    /// Restricted to these rectangles, in surface-local coordinates.
+    /// A defined region made up of several add/sub rectangles
     Rects(Vec<RegionRect>),
 }
 
+/// A region
 #[derive(Debug, Default)]
 pub struct Region {
+    /// The client id that owns the region
     pub client_id: u32,
-    /// Add/subtract rectangles in the order the client issued them.
+    /// Add/subtract rectangles
     pub rects: Vec<RegionRect>,
 }
 
+/// A role for an Xdg wrapped surface
 #[derive(Debug)]
 pub enum XdgRole {
+    /// A top-level window
     Toplevel(u32),
+    /// A popup menu
     #[allow(dead_code)]
     Popup(u32),
 }
 
-/// How many unacknowledged configures a surface may accumulate.
-///
-/// A client that is keeping up holds one or two. A resize drag can outrun a
-/// slow client by a long way, so the cap is generous — but not unbounded,
-/// because a client that never acknowledges anything would otherwise grow this
-/// list for as long as the user keeps dragging.
+/// How many unacknowledged configures a surface may accumulate
 const MAX_PENDING_CONFIGURES: usize = 256;
 
+/// The state of a xdg wrapped surface
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct XdgSurfaceState {
+    /// Owning client
     pub client_id: u32,
+    /// The surface id that is wrapped
     pub wl_surface_id: u32,
+    /// The xdg role
     pub role: Option<XdgRole>,
-    /// Whether the client has ever acknowledged a configure.
-    ///
-    /// The protocol makes this the line between a surface that may show
-    /// content and one that may not: committing a buffer before it is set is
-    /// `unconfigured_buffer`.
+    /// Whether the client has ever acknowledged a configure
     pub configured: bool,
+    /// Geometry of the top-level wrapper
     pub geometry: Option<(i32, i32, i32, i32)>,
-    /// Serials sent in `xdg_surface.configure` and not yet acknowledged,
-    /// oldest first.
-    ///
-    /// Only the serials. What a configure *asked for* is deliberately not kept
-    /// alongside them: the client's next buffer is what actually decides its
-    /// size, so a recorded size would be a second answer to a question that
-    /// already has one, and nothing here would read it.
+    /// Pending `xdg_surface.configure` serials
     pub pending_configures: VecDeque<u32>,
-    /// The highest serial ever sent to this surface.
-    ///
-    /// What tells a stale acknowledgement apart from an invented one. A client
-    /// may acknowledge a configure the compositor has already moved past —
-    /// that is ordinary, and harmless — but one *newer* than anything sent
-    /// names an event that never happened, and the two need different answers.
+    /// The highest serial ever sent to this surface
     pub highest_configure: u32,
 }
 
+/// The state of an xdg top-level window
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct XdgToplevelState {
+    /// Owning client
     pub client_id: u32,
+    /// Wrapped surface Id
     pub xdg_surface_id: u32,
+    // Title of the top-level window
     pub title: Option<String>,
+    /// App Id String for this window
     pub app_id: Option<String>,
-    /// Smallest size the client says it can work at, from `set_min_size`.
-    /// Zero in a dimension means it named no limit there.
+    /// Smallest size the client says it can work at, from `set_min_size`
     pub min_size: (i32, i32),
-    /// Largest size the client says it wants, from `set_max_size`. Zero in a
-    /// dimension means it named no limit there.
+    /// Largest size the client says it wants, from `set_max_size`
     pub max_size: (i32, i32),
-    /// Filling its output, from `set_maximized`.
+    /// Is it maximized
     pub maximized: bool,
-    /// Covering its output entirely, from `set_fullscreen`. Distinct from
-    /// maximized: a fullscreen window is drawn above every other window on
-    /// its workspace, and is not confined to leave room for anything.
+    /// Is it full-screened
     pub fullscreen: bool,
-    /// Where the window was before it was maximized or made fullscreen, as
-    /// (x, y, width, height).
-    ///
-    /// Taken once, on the way *into* the first of those states, and spent on
-    /// the way out of the last. A window that goes maximized then fullscreen
-    /// then back must land where it started, so a second capture on the way
-    /// into fullscreen — which would record the maximized geometry — is
-    /// exactly the bug to avoid.
+    /// Where the window was before it was maximized or made fullscreen
     pub restore: Option<(i32, i32, i32, i32)>,
-    /// The toplevel this one hangs off, from `set_parent`. A dialog names its
-    /// window here, and is kept above it in the stack.
+    /// The toplevel this one hangs off, from `set_parent`.  (E.g. a dialog)
     pub parent: Option<u32>,
-    /// The bounds last sent as `configure_bounds`, so an unchanged one sends
-    /// nothing. A window that has not moved between displays hears this once.
+    /// The bounds last sent as `configure_bounds`
     pub sent_bounds: Option<(i32, i32)>,
 }
 
+/// Xdg popup state
 #[derive(Debug)]
 pub struct XdgPopupState {
+    /// Owning client
     pub client_id: u32,
+    /// Wrapped surface
     pub xdg_surface_id: u32,
+    /// Owning xdg wrapped top window or other popup
     pub parent_xdg_surface_id: u32,
-    /// The positioner it was created with.
-    ///
-    /// Kept because a popup created with a null parent — which is how a layer
-    /// surface's popup is made — cannot be placed until something gives it
-    /// one, and by then the request carrying the positioner is long gone.
+    /// The positioner id it was created with
     pub positioner: u32,
+    /// X position for the popup
     pub x: i32,
+    /// Y position for the popup
     pub y: i32,
+    // Width
     pub width: i32,
+    /// Height
     pub height: i32,
 }
 
@@ -3210,34 +3098,24 @@ impl CompositorState {
             self.invalidate_offers_from(source);
         }
         self.data_sources.retain(|&(cid, _), _| cid != client_id);
-        // Offers are dropped by the client that *holds* them, not by the one
-        // whose source they drew from — those are cut loose above and left in
-        // place, because their own clients still own the ids.
         self.data_offers.retain(|_, o| o.client_id != client_id);
         self.data_devices.retain(|d| d.client_id != client_id);
 
-        // The devices of the other two data interfaces. Their sources and offers
-        // went with the loop above, which walks the one map that holds all
-        // three; only the per-interface device lists are left to clear.
         self.primary_devices.retain(|d| d.client_id != client_id);
         self.data_control_devices
             .retain(|d| d.client_id != client_id);
         self.fractional_scales
             .retain(|&(cid, _), _| cid != client_id);
-        // The loaded images stay: they are the theme's, not the client's, and
-        // the next client to ask for the same shape wants the same picture.
         self.cursor_shapes.remove(&client_id);
         self.dnd_icon_surfaces.retain(|(cid, _)| *cid != client_id);
         self.recent_input_serials.remove(&client_id);
-        // Clear focus if it pointed to a surface owned by this client
+
         if let Some((cid, _)) = self.focused_surface
             && cid == client_id
         {
             self.focused_surface = None;
         }
-        // And the pointer, for the reason [`Self::destroy_surface`] gives: it
-        // is otherwise only recomputed on motion, so it would go on naming a
-        // surface of a client that has gone.
+
         if let Some((cid, _)) = self.pointer_surface
             && cid == client_id
         {

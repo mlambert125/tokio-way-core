@@ -36,7 +36,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
                 client.unregister(msg.message.object_id);
             }
         }
-        _ => super::unknown_request(state, msg, INTERFACE),
+        _ => super::reject_unknown_request(state, msg, INTERFACE),
     }
 }
 
@@ -60,7 +60,7 @@ fn handle_create_data_source(state: &mut CompositorState, msg: &WaylandRequestWi
 
     let version = client.version(msg.message.object_id);
     if client
-        .register_with_version(source_id, ObjectType::ZwlrDataControlSource, version)
+        .register_client_object_with_version(source_id, ObjectType::ZwlrDataControlSource, version)
         .is_err()
     {
         return;
@@ -104,7 +104,7 @@ fn handle_get_data_device(state: &mut CompositorState, msg: &WaylandRequestWithC
     // told about the primary selection at all.
     let version = client.version(msg.message.object_id);
     if client
-        .register_with_version(device_id, ObjectType::ZwlrDataControlDevice, version)
+        .register_client_object_with_version(device_id, ObjectType::ZwlrDataControlDevice, version)
         .is_err()
     {
         return;

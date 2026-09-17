@@ -45,7 +45,7 @@ fn add_primary_device(state: &mut CompositorState, client_id: u32) {
         .clients
         .get(client_id)
         .unwrap()
-        .register(MANAGER, ObjectType::ZwpPrimarySelectionDeviceManager)
+        .register_client_object(MANAGER, ObjectType::ZwpPrimarySelectionDeviceManager)
         .unwrap();
     deliver(
         state,
@@ -70,7 +70,7 @@ pub fn add_primary_client(
         .clients
         .get(client_id)
         .unwrap()
-        .register(SURFACE, ObjectType::WlSurface)
+        .register_client_object(SURFACE, ObjectType::WlSurface)
         .unwrap();
     state.create_surface(client_id, SURFACE);
     add_primary_device(state, client_id);
@@ -265,7 +265,7 @@ fn binding_a_device_while_focused_is_told_the_selection_at_once() {
         .clients
         .get(2)
         .unwrap()
-        .register(SURFACE, ObjectType::WlSurface)
+        .register_client_object(SURFACE, ObjectType::WlSurface)
         .unwrap();
     state.create_surface(2, SURFACE);
     state.focused_surface = Some((2, SURFACE));

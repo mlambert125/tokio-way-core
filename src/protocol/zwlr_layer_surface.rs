@@ -12,7 +12,9 @@ use tracing::debug;
 use tokio_way_sock::WaylandRequestWithClientInfo;
 
 use super::super::layer;
-use super::super::state::{Anchor, ClientObjectId, CompositorState, KeyboardInteractivity, Layer};
+use super::super::state::{
+    Anchor, ClientObjectId, CompositorState, KeyboardInteractivity, LayerKind,
+};
 use super::wire_utils::{ArgReader, ArgWriter, build_message};
 
 // Request opcodes
@@ -46,7 +48,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         ACK_CONFIGURE => ack_configure(state, msg),
         DESTROY => destroy(state, msg),
         SET_LAYER => set_layer(state, msg),
-        _ => super::unknown_request(state, msg, "zwlr_layer_surface_v1"),
+        _ => super::reject_unknown_request(state, msg, "zwlr_layer_surface_v1"),
     }
 }
 
@@ -66,7 +68,7 @@ macro_rules! pending {
 fn set_size(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(width), Some(height)) = (args.u32(), args.u32()) else {
-        super::malformed_request(state, msg, "zwlr_layer_surface_v1");
+        super::reject_malformed_request(state, msg, "zwlr_layer_surface_v1");
         return;
     };
     // Unsigned on the wire, but the compositor works in `i32` throughout and a
@@ -88,7 +90,7 @@ fn set_size(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
 fn set_anchor(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(anchor) = args.u32() else {
-        super::malformed_request(state, msg, "zwlr_layer_surface_v1");
+        super::reject_malformed_request(state, msg, "zwlr_layer_surface_v1");
         return;
     };
     if anchor & !Anchor::ALL != 0 {
@@ -109,7 +111,7 @@ fn set_anchor(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
 fn set_exclusive_zone(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(zone) = args.i32() else {
-        super::malformed_request(state, msg, "zwlr_layer_surface_v1");
+        super::reject_malformed_request(state, msg, "zwlr_layer_surface_v1");
         return;
     };
     pending!(state, msg).exclusive_zone = zone;
@@ -120,7 +122,7 @@ fn set_margin(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let (Some(top), Some(right), Some(bottom), Some(left)) =
         (args.i32(), args.i32(), args.i32(), args.i32())
     else {
-        super::malformed_request(state, msg, "zwlr_layer_surface_v1");
+        super::reject_malformed_request(state, msg, "zwlr_layer_surface_v1");
         return;
     };
     pending!(state, msg).margin = (top, right, bottom, left);
@@ -129,7 +131,7 @@ fn set_margin(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
 fn set_keyboard_interactivity(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(value) = args.u32() else {
-        super::malformed_request(state, msg, "zwlr_layer_surface_v1");
+        super::reject_malformed_request(state, msg, "zwlr_layer_surface_v1");
         return;
     };
     let Some(interactivity) = KeyboardInteractivity::from_repr(value) else {
@@ -148,10 +150,10 @@ fn set_keyboard_interactivity(state: &mut CompositorState, msg: &WaylandRequestW
 fn set_layer(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(value) = args.u32() else {
-        super::malformed_request(state, msg, "zwlr_layer_surface_v1");
+        super::reject_malformed_request(state, msg, "zwlr_layer_surface_v1");
         return;
     };
-    let Some(layer) = Layer::from_repr(value) else {
+    let Some(layer) = LayerKind::from_repr(value) else {
         if let Some(client) = state.clients.get(msg.client_id) {
             // The shell's invalid_layer, which is what the protocol reuses here.
             client.send_error(
@@ -173,7 +175,7 @@ fn set_layer(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
 fn get_popup(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(popup_id) = args.u32() else {
-        super::malformed_request(state, msg, "zwlr_layer_surface_v1");
+        super::reject_malformed_request(state, msg, "zwlr_layer_surface_v1");
         return;
     };
     let client_id = msg.client_id;
@@ -249,7 +251,7 @@ fn get_popup(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
 fn ack_configure(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(serial) = args.u32() else {
-        super::malformed_request(state, msg, "zwlr_layer_surface_v1");
+        super::reject_malformed_request(state, msg, "zwlr_layer_surface_v1");
         return;
     };
     let key = (msg.client_id, msg.message.object_id);

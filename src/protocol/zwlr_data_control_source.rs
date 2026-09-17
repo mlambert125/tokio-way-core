@@ -34,14 +34,14 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     match msg.message.op_code {
         OFFER => handle_offer(state, msg),
         DESTROY => handle_destroy(state, msg),
-        _ => super::unknown_request(state, msg, INTERFACE),
+        _ => super::reject_unknown_request(state, msg, INTERFACE),
     }
 }
 
 fn handle_offer(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(mime_type) = args.string() else {
-        super::malformed_request(state, msg, INTERFACE);
+        super::reject_malformed_request(state, msg, INTERFACE);
         return;
     };
 

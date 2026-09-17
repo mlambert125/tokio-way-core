@@ -3,7 +3,7 @@
 //! Touch is multi-point: several fingers are down at once and every event names
 //! which one it is about. A point belongs to the surface it *started* on for
 //! its whole life, so a finger dragged off a window keeps reporting to the
-//! client that owns it — which is what makes a swipe that leaves the window
+//! client that owns it, which is what makes a swipe that leaves the window
 //! still reach the thing being swiped.
 
 use tokio_way_sock::WaylandRequestWithClientInfo;
@@ -35,7 +35,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
                 tracing::warn!("Received message from unknown client {}", msg.client_id);
             }
         }
-        _ => super::unknown_request(state, msg, "wl_touch"),
+        _ => super::reject_unknown_request(state, msg, "wl_touch"),
     }
 }
 

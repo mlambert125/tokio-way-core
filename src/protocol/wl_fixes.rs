@@ -39,14 +39,14 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
             }
         }
         DESTROY_REGISTRY => handle_destroy_registry(state, msg),
-        _ => super::unknown_request(state, msg, "wl_fixes"),
+        _ => super::reject_unknown_request(state, msg, "wl_fixes"),
     }
 }
 
 fn handle_destroy_registry(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(registry_id) = args.u32() else {
-        super::malformed_request(state, msg, "wl_fixes");
+        super::reject_malformed_request(state, msg, "wl_fixes");
         return;
     };
 

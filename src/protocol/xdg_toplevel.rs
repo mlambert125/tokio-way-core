@@ -87,7 +87,7 @@ fn configure_unchanged(state: &mut CompositorState, key: ClientObjectId) {
 fn handle_set_parent(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(parent_id) = args.u32() else {
-        super::malformed_request(state, msg, "xdg_toplevel");
+        super::reject_malformed_request(state, msg, "xdg_toplevel");
         return;
     };
     let key = (msg.client_id, msg.message.object_id);
@@ -249,7 +249,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
             // no way back to the screen — hiding one would lose it.
             debug!("xdg_toplevel.set_minimized: not supported");
         }
-        _ => super::unknown_request(state, msg, "xdg_toplevel"),
+        _ => super::reject_unknown_request(state, msg, "xdg_toplevel"),
     }
 }
 
@@ -265,7 +265,7 @@ fn handle_destroy(state: &mut CompositorState, msg: &WaylandRequestWithClientInf
 fn handle_set_title(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(title) = args.string() else {
-        super::malformed_request(state, msg, "xdg_toplevel");
+        super::reject_malformed_request(state, msg, "xdg_toplevel");
         return;
     };
     let toplevel_id = msg.message.object_id;
@@ -278,7 +278,7 @@ fn handle_set_title(state: &mut CompositorState, msg: &WaylandRequestWithClientI
 fn handle_set_app_id(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(app_id) = args.string() else {
-        super::malformed_request(state, msg, "xdg_toplevel");
+        super::reject_malformed_request(state, msg, "xdg_toplevel");
         return;
     };
     let toplevel_id = msg.message.object_id;
@@ -314,7 +314,7 @@ fn handle_set_size_hint(
 ) {
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(width), Some(height)) = (args.i32(), args.i32()) else {
-        super::malformed_request(state, msg, "xdg_toplevel");
+        super::reject_malformed_request(state, msg, "xdg_toplevel");
         return;
     };
     let toplevel_id = msg.message.object_id;
@@ -345,7 +345,7 @@ fn handle_move(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) 
     let mut args = ArgReader::new(&msg.message.args);
     // move args: object seat, uint serial
     let (Some(_seat), Some(serial)) = (args.u32(), args.u32()) else {
-        super::malformed_request(state, msg, "xdg_toplevel");
+        super::reject_malformed_request(state, msg, "xdg_toplevel");
         return;
     };
     let Some(surface) = grab_target(state, msg.client_id, msg.message.object_id, serial) else {
@@ -360,7 +360,7 @@ fn handle_resize(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo
     let mut args = ArgReader::new(&msg.message.args);
     // resize args: object seat, uint serial, uint edges
     let (Some(_seat), Some(serial), Some(edges)) = (args.u32(), args.u32(), args.u32()) else {
-        super::malformed_request(state, msg, "xdg_toplevel");
+        super::reject_malformed_request(state, msg, "xdg_toplevel");
         return;
     };
     let Some(surface) = grab_target(state, msg.client_id, msg.message.object_id, serial) else {

@@ -44,7 +44,7 @@ fn state_with_params() -> (CompositorState, Receiver<WaylandEvent>) {
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(PARAMS, ObjectType::ZwpLinuxBufferParams)
+        .register_client_object(PARAMS, ObjectType::ZwpLinuxBufferParams)
         .unwrap();
     state.dmabuf_params.insert(
         (CLIENT, PARAMS),
@@ -351,7 +351,7 @@ fn a_buffer_the_driver_refuses_stays_an_object_the_client_still_owns() {
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(BUFFER, ObjectType::WlBuffer)
+        .register_client_object(BUFFER, ObjectType::WlBuffer)
         .unwrap();
     let image = Arc::new(tokio_way_backends::dma::DmabufImage {
         width: SIDE,

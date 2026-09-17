@@ -39,7 +39,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
                 client.unregister(msg.message.object_id);
             }
         }
-        _ => super::unknown_request(state, msg, INTERFACE),
+        _ => super::reject_unknown_request(state, msg, INTERFACE),
     }
 }
 
@@ -62,7 +62,7 @@ fn handle_create_source(state: &mut CompositorState, msg: &WaylandRequestWithCli
     debug!("{INTERFACE}.create_source: source_id={source_id}");
 
     if client
-        .register(source_id, ObjectType::ZwpPrimarySelectionSource)
+        .register_client_object(source_id, ObjectType::ZwpPrimarySelectionSource)
         .is_err()
     {
         return;
@@ -110,7 +110,7 @@ fn handle_get_device(state: &mut CompositorState, msg: &WaylandRequestWithClient
     // distinguish. It stays decoded rather than skipped so that a client
     // sending a short request is still caught as malformed.
     if client
-        .register(device_id, ObjectType::ZwpPrimarySelectionDevice)
+        .register_client_object(device_id, ObjectType::ZwpPrimarySelectionDevice)
         .is_err()
     {
         return;

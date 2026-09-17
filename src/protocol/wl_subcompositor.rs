@@ -25,7 +25,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
             }
         }
         GET_SUBSURFACE => handle_get_subsurface(state, msg),
-        _ => super::unknown_request(state, msg, "wl_subcompositor"),
+        _ => super::reject_unknown_request(state, msg, "wl_subcompositor"),
     }
 }
 
@@ -99,7 +99,7 @@ fn handle_get_subsurface(state: &mut CompositorState, msg: &WaylandRequestWithCl
     // a half-built parent-child relationship behind.
     let version = client.version(msg.message.object_id);
     if client
-        .register_with_version(subsurface_id, ObjectType::WlSubsurface, version)
+        .register_client_object_with_version(subsurface_id, ObjectType::WlSubsurface, version)
         .is_err()
     {
         return;

@@ -27,9 +27,11 @@ pub fn add_data_client(
 
     let client = state.clients.get(client_id).unwrap();
     client
-        .register_with_version(MANAGER, ObjectType::WlDataDeviceManager, 3)
+        .register_client_object_with_version(MANAGER, ObjectType::WlDataDeviceManager, 3)
         .unwrap();
-    client.register(SURFACE, ObjectType::WlSurface).unwrap();
+    client
+        .register_client_object(SURFACE, ObjectType::WlSurface)
+        .unwrap();
     state.create_surface(client_id, SURFACE);
 
     deliver(

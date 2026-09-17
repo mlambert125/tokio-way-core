@@ -44,7 +44,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         START_DRAG => handle_start_drag(state, msg),
         SET_SELECTION => handle_set_selection(state, msg),
         RELEASE => handle_release(state, msg),
-        _ => super::unknown_request(state, msg, "wl_data_device"),
+        _ => super::reject_unknown_request(state, msg, "wl_data_device"),
     }
 }
 
@@ -97,7 +97,7 @@ fn handle_start_drag(state: &mut CompositorState, msg: &WaylandRequestWithClient
     let (Some(source_id), Some(origin_id), Some(icon_id), Some(serial)) =
         (args.u32(), args.u32(), args.u32(), args.u32())
     else {
-        super::malformed_request(state, msg, "wl_data_device");
+        super::reject_malformed_request(state, msg, "wl_data_device");
         return;
     };
 
@@ -189,7 +189,7 @@ fn handle_set_selection(state: &mut CompositorState, msg: &WaylandRequestWithCli
     let mut args = ArgReader::new(&msg.message.args);
     // set_selection args: object source (nullable), uint serial
     let (Some(source_id), Some(serial)) = (args.u32(), args.u32()) else {
-        super::malformed_request(state, msg, "wl_data_device");
+        super::reject_malformed_request(state, msg, "wl_data_device");
         return;
     };
 
@@ -244,7 +244,7 @@ pub fn create_offer(
     // The device's version, so the offer's own events are gated on what the
     // client actually bound rather than on the version 1 default.
     let version = client.version(device_id);
-    let offer_id = client.allocate_id_with_version(ObjectType::WlDataOffer, version)?;
+    let offer_id = client.register_server_object_with_version(ObjectType::WlDataOffer, version)?;
 
     let mime_types = state
         .data_sources

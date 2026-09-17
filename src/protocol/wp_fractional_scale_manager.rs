@@ -32,7 +32,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
             }
         }
         GET_FRACTIONAL_SCALE => handle_get_fractional_scale(state, msg),
-        _ => super::unknown_request(state, msg, INTERFACE),
+        _ => super::reject_unknown_request(state, msg, INTERFACE),
     }
 }
 
@@ -40,7 +40,7 @@ fn handle_get_fractional_scale(state: &mut CompositorState, msg: &WaylandRequest
     let mut args = ArgReader::new(&msg.message.args);
     // get_fractional_scale args: new_id, object surface
     let (Some(object_id), Some(surface_id)) = (args.new_id(), args.u32()) else {
-        super::malformed_request(state, msg, INTERFACE);
+        super::reject_malformed_request(state, msg, INTERFACE);
         return;
     };
 
@@ -74,7 +74,7 @@ fn handle_get_fractional_scale(state: &mut CompositorState, msg: &WaylandRequest
         return;
     };
     if client
-        .register(object_id, ObjectType::WpFractionalScale)
+        .register_client_object(object_id, ObjectType::WpFractionalScale)
         .is_err()
     {
         return;

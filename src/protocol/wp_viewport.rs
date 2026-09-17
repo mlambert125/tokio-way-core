@@ -21,7 +21,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         DESTROY => handle_destroy(state, msg),
         SET_SOURCE => handle_set_source(state, msg),
         SET_DESTINATION => handle_set_destination(state, msg),
-        _ => super::unknown_request(state, msg, "wp_viewport"),
+        _ => super::reject_unknown_request(state, msg, "wp_viewport"),
     }
 }
 
@@ -42,7 +42,7 @@ fn handle_set_source(state: &mut CompositorState, msg: &WaylandRequestWithClient
     let (Some(x), Some(y), Some(width), Some(height)) =
         (args.fixed(), args.fixed(), args.fixed(), args.fixed())
     else {
-        super::malformed_request(state, msg, "wp_viewport");
+        super::reject_malformed_request(state, msg, "wp_viewport");
         return;
     };
 
@@ -67,7 +67,7 @@ fn handle_set_source(state: &mut CompositorState, msg: &WaylandRequestWithClient
 fn handle_set_destination(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(width), Some(height)) = (args.i32(), args.i32()) else {
-        super::malformed_request(state, msg, "wp_viewport");
+        super::reject_malformed_request(state, msg, "wp_viewport");
         return;
     };
 

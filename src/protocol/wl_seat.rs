@@ -37,7 +37,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
                 client.unregister(msg.message.object_id);
             }
         }
-        _ => super::unknown_request(state, msg, "wl_seat"),
+        _ => super::reject_unknown_request(state, msg, "wl_seat"),
     }
 }
 
@@ -60,7 +60,7 @@ fn handle_get_pointer(state: &mut CompositorState, msg: &WaylandRequestWithClien
 
     let seat_version = client.version(msg.message.object_id);
     if client
-        .register_with_version(pointer_id, ObjectType::WlPointer, seat_version)
+        .register_client_object_with_version(pointer_id, ObjectType::WlPointer, seat_version)
         .is_err()
     {
         return;
@@ -96,7 +96,7 @@ fn handle_get_touch(state: &mut CompositorState, msg: &WaylandRequestWithClientI
 
     let seat_version = client.version(msg.message.object_id);
     if client
-        .register_with_version(touch_id, ObjectType::WlTouch, seat_version)
+        .register_client_object_with_version(touch_id, ObjectType::WlTouch, seat_version)
         .is_err()
     {
         return;
@@ -127,7 +127,7 @@ fn handle_get_keyboard(state: &mut CompositorState, msg: &WaylandRequestWithClie
 
     let seat_version = client.version(msg.message.object_id);
     if client
-        .register_with_version(keyboard_id, ObjectType::WlKeyboard, seat_version)
+        .register_client_object_with_version(keyboard_id, ObjectType::WlKeyboard, seat_version)
         .is_err()
     {
         return;

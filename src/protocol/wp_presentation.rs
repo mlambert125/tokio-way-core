@@ -30,7 +30,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
             }
         }
         FEEDBACK => handle_feedback(state, msg),
-        _ => super::unknown_request(state, msg, "wp_presentation"),
+        _ => super::reject_unknown_request(state, msg, "wp_presentation"),
     }
 }
 
@@ -41,7 +41,7 @@ fn handle_feedback(state: &mut CompositorState, msg: &WaylandRequestWithClientIn
     };
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(surface_id), Some(callback_id)) = (args.u32(), args.new_id()) else {
-        super::malformed_request(state, msg, "wp_presentation");
+        super::reject_malformed_request(state, msg, "wp_presentation");
         return;
     };
 
@@ -51,7 +51,7 @@ fn handle_feedback(state: &mut CompositorState, msg: &WaylandRequestWithClientIn
     );
 
     if client
-        .register(callback_id, ObjectType::WpPresentationFeedback)
+        .register_client_object(callback_id, ObjectType::WpPresentationFeedback)
         .is_err()
     {
         return;

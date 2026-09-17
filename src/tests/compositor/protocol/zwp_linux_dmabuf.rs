@@ -92,7 +92,7 @@ fn support_arriving_late_reaches_clients_already_connected() {
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(REGISTRY, ObjectType::WlRegistry)
+        .register_client_object(REGISTRY, ObjectType::WlRegistry)
         .unwrap();
     while rx.try_recv().is_ok() {}
 
@@ -117,7 +117,7 @@ fn formats_sent_at_version(state: &mut CompositorState, version: u32) -> Vec<(u1
         .clients
         .get(CLIENT)
         .unwrap()
-        .register_with_version(DMABUF, ObjectType::ZwpLinuxDmabuf, version)
+        .register_client_object_with_version(DMABUF, ObjectType::ZwpLinuxDmabuf, version)
         .unwrap();
 
     send_formats(state, CLIENT, DMABUF);
@@ -211,7 +211,7 @@ fn creating_params_registers_an_object_to_describe_a_buffer_on() {
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(DMABUF, ObjectType::ZwpLinuxDmabuf)
+        .register_client_object(DMABUF, ObjectType::ZwpLinuxDmabuf)
         .unwrap();
 
     tokio_way_core::protocol::zwp_linux_dmabuf::handle(

@@ -90,7 +90,7 @@ fn state_with(object_type: ObjectType) -> (CompositorState, Receiver<WaylandEven
             .clients
             .get(CLIENT)
             .unwrap()
-            .register_with_version(SUBJECT, object_type, 8)
+            .register_client_object_with_version(SUBJECT, object_type, 8)
             .unwrap();
     }
     (state, rx)

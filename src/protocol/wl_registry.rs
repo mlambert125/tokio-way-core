@@ -27,7 +27,7 @@ pub const GLOBAL_REMOVE: u16 = 1;
 pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     match msg.message.op_code {
         BIND => handle_bind(state, msg),
-        _ => super::unknown_request(state, msg, "wl_registry"),
+        _ => super::reject_unknown_request(state, msg, "wl_registry"),
     }
 }
 
@@ -159,7 +159,7 @@ fn handle_bind(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) 
         };
 
         if client
-            .register_with_version(new_id, object_type, bound_version)
+            .register_client_object_with_version(new_id, object_type, bound_version)
             .is_err()
         {
             return;
@@ -177,7 +177,7 @@ fn handle_bind(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) 
     } else if dmabuf_global == Some(global_name) {
         let bound_version = version.min(zwp_linux_dmabuf::VERSION);
         if client
-            .register_with_version(new_id, ObjectType::ZwpLinuxDmabuf, bound_version)
+            .register_client_object_with_version(new_id, ObjectType::ZwpLinuxDmabuf, bound_version)
             .is_err()
         {
             return;
@@ -191,7 +191,7 @@ fn handle_bind(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) 
         // Dynamic output global — bind to the specific output.
         let bound_version = version.min(super::WL_OUTPUT_VERSION);
         if client
-            .register_with_version(new_id, ObjectType::WlOutput, bound_version)
+            .register_client_object_with_version(new_id, ObjectType::WlOutput, bound_version)
             .is_err()
         {
             return;

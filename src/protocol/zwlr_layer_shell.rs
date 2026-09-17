@@ -10,7 +10,9 @@ use tracing::debug;
 
 use tokio_way_sock::WaylandRequestWithClientInfo;
 
-use super::super::state::{CompositorState, Layer, LayerPending, LayerSurfaceState};
+use super::super::state::{
+    CompositorState, LayerKind, LayerSurfaceState, LayerSurfaceStatePending,
+};
 use super::ObjectType;
 use super::wire_utils::ArgReader;
 
@@ -37,7 +39,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
                 client.unregister(msg.message.object_id);
             }
         }
-        _ => super::unknown_request(state, msg, INTERFACE),
+        _ => super::reject_unknown_request(state, msg, INTERFACE),
     }
 }
 
@@ -51,7 +53,7 @@ fn handle_get_layer_surface(state: &mut CompositorState, msg: &WaylandRequestWit
         args.u32(),
         args.string(),
     ) else {
-        super::malformed_request(state, msg, INTERFACE);
+        super::reject_malformed_request(state, msg, INTERFACE);
         return;
     };
     let client_id = msg.client_id;
@@ -61,7 +63,7 @@ fn handle_get_layer_surface(state: &mut CompositorState, msg: &WaylandRequestWit
          layer={layer} namespace={namespace:?}"
     );
 
-    let Some(layer) = Layer::from_repr(layer) else {
+    let Some(layer) = LayerKind::from_repr(layer) else {
         if let Some(client) = state.clients.get(client_id) {
             client.send_error(
                 msg.message.object_id,
@@ -100,7 +102,7 @@ fn handle_get_layer_surface(state: &mut CompositorState, msg: &WaylandRequestWit
     };
     let version = client.version(msg.message.object_id);
     if client
-        .register_with_version(layer_id, ObjectType::ZwlrLayerSurface, version)
+        .register_client_object_with_version(layer_id, ObjectType::ZwlrLayerSurface, version)
         .is_err()
     {
         return;
@@ -112,13 +114,13 @@ fn handle_get_layer_surface(state: &mut CompositorState, msg: &WaylandRequestWit
             client_id,
             wl_surface_id: surface_id,
             output,
-            pending: LayerPending {
+            pending: LayerSurfaceStatePending {
                 layer,
-                ..LayerPending::default()
+                ..LayerSurfaceStatePending::default()
             },
-            current: LayerPending {
+            current: LayerSurfaceStatePending {
                 layer,
-                ..LayerPending::default()
+                ..LayerSurfaceStatePending::default()
             },
             namespace,
             configured: false,

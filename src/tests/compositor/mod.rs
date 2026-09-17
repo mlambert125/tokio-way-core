@@ -255,8 +255,8 @@ fn stack(state: &CompositorState) -> Vec<ClientObjectId> {
     state.shell.visible_stack(OutputId(1))
 }
 
-use tokio_way_backends::outputs::OutputId;
 use crate::input::{finish_buffer_releases, start_buffer_releases};
+use tokio_way_backends::outputs::OutputId;
 
 /// A pool with two buffers, and a mapped surface showing the first. The
 /// receiver sees every message sent to the client.
@@ -1089,9 +1089,7 @@ fn an_output_that_goes_away_is_forgotten() {
 
 use crate::input::{enter_drag_surface, finish_drag, update_drag};
 use crate::protocol::{wl_data_device, wl_pointer};
-use crate::state::{
-    DataDeviceBinding, DataInterface, DataSource, DataSourceRole, OfferKind,
-};
+use crate::state::{DataDeviceBinding, DataInterface, DataSource, DataSourceRole, OfferKind};
 
 const DRAG_SOURCE: u32 = 40;
 const DRAG_DEVICE_A: u32 = 41;
@@ -1103,7 +1101,11 @@ fn add_data_device(state: &mut CompositorState, client_id: u32, device_id: u32) 
         .clients
         .get(client_id)
         .unwrap()
-        .register_with_version(device_id, crate::protocol::ObjectType::WlDataDevice, 3)
+        .register_client_object_with_version(
+            device_id,
+            crate::protocol::ObjectType::WlDataDevice,
+            3,
+        )
         .unwrap();
     state.data_devices.push(DataDeviceBinding {
         client_id,
@@ -1138,7 +1140,11 @@ fn state_ready_to_drag() -> (
         .clients
         .get(1)
         .unwrap()
-        .register_with_version(DRAG_SOURCE, crate::protocol::ObjectType::WlDataSource, 3)
+        .register_client_object_with_version(
+            DRAG_SOURCE,
+            crate::protocol::ObjectType::WlDataSource,
+            3,
+        )
         .unwrap();
 
     let target_rx = add_client(&mut state, 2);
@@ -1321,10 +1327,8 @@ fn releasing_over_a_target_that_accepted_nothing_cancels() {
     assert!(target_ops.contains(&(DRAG_DEVICE_B, wl_data_device::LEAVE)));
     assert!(!target_ops.contains(&(DRAG_DEVICE_B, wl_data_device::DROP)));
     assert!(
-        sent_ops(&mut origin_rx).contains(&(
-            DRAG_SOURCE,
-            crate::protocol::wl_data_source::CANCELLED
-        )),
+        sent_ops(&mut origin_rx)
+            .contains(&(DRAG_SOURCE, crate::protocol::wl_data_source::CANCELLED)),
         "a drag that lands nowhere cancels its source"
     );
 }
@@ -1340,10 +1344,10 @@ fn releasing_over_nothing_cancels() {
 
     finish_drag(&mut state);
 
-    assert!(sent_ops(&mut origin_rx).contains(&(
-        DRAG_SOURCE,
-        crate::protocol::wl_data_source::CANCELLED
-    )));
+    assert!(
+        sent_ops(&mut origin_rx)
+            .contains(&(DRAG_SOURCE, crate::protocol::wl_data_source::CANCELLED))
+    );
 }
 
 #[test]
@@ -1358,10 +1362,10 @@ fn the_target_disconnecting_mid_drag_turns_the_drop_into_a_cancel() {
     assert!(state.drag.as_ref().unwrap().focus.is_none());
 
     finish_drag(&mut state);
-    assert!(sent_ops(&mut origin_rx).contains(&(
-        DRAG_SOURCE,
-        crate::protocol::wl_data_source::CANCELLED
-    )));
+    assert!(
+        sent_ops(&mut origin_rx)
+            .contains(&(DRAG_SOURCE, crate::protocol::wl_data_source::CANCELLED))
+    );
 }
 
 #[test]
@@ -1505,14 +1509,14 @@ fn an_unplugged_output_has_its_global_withdrawn() {
         .clients
         .get(1)
         .unwrap()
-        .register(2, ObjectType::WlRegistry)
+        .register_client_object(2, ObjectType::WlRegistry)
         .unwrap();
     // The client has bound the output, as a client that cared would have.
     state
         .clients
         .get(1)
         .unwrap()
-        .register(3, ObjectType::WlOutput)
+        .register_client_object(3, ObjectType::WlOutput)
         .unwrap();
     report_outputs(&mut state, &[OutputId(1), OutputId(2)]);
     state.output_bindings.insert((1, 3), OutputId(2));
@@ -1580,7 +1584,7 @@ fn a_client_asking_for_touch_gets_an_object_that_can_be_released() {
         .clients
         .get(1)
         .unwrap()
-        .register_with_version(5, ObjectType::WlSeat, 8)
+        .register_client_object_with_version(5, ObjectType::WlSeat, 8)
         .unwrap();
 
     deliver_to(
@@ -1620,7 +1624,7 @@ fn a_keyboard_bound_after_its_surface_was_already_focused_is_caught_up() {
         .clients
         .get(1)
         .unwrap()
-        .register(10, ObjectType::WlSurface)
+        .register_client_object(10, ObjectType::WlSurface)
         .unwrap();
     state.focused_surface = Some((1, 10));
 
@@ -1628,7 +1632,7 @@ fn a_keyboard_bound_after_its_surface_was_already_focused_is_caught_up() {
         .clients
         .get(1)
         .unwrap()
-        .register_with_version(5, ObjectType::WlSeat, 8)
+        .register_client_object_with_version(5, ObjectType::WlSeat, 8)
         .unwrap();
     deliver_to(
         &mut state,
@@ -1672,7 +1676,7 @@ fn a_keyboard_bound_while_a_modifier_is_held_is_told_it_is_held() {
         .clients
         .get(1)
         .unwrap()
-        .register(10, ObjectType::WlSurface)
+        .register_client_object(10, ObjectType::WlSurface)
         .unwrap();
     state.focused_surface = Some((1, 10));
     state.modifiers = crate::state::ModifierState {
@@ -1686,7 +1690,7 @@ fn a_keyboard_bound_while_a_modifier_is_held_is_told_it_is_held() {
         .clients
         .get(1)
         .unwrap()
-        .register_with_version(5, ObjectType::WlSeat, 8)
+        .register_client_object_with_version(5, ObjectType::WlSeat, 8)
         .unwrap();
     deliver_to(
         &mut state,
@@ -1726,7 +1730,7 @@ fn focusing_a_window_tells_it_which_modifiers_are_held() {
         .clients
         .get(1)
         .unwrap()
-        .register(10, ObjectType::WlSurface)
+        .register_client_object(10, ObjectType::WlSurface)
         .unwrap();
     state.keyboards.push(crate::state::KeyboardBinding {
         client_id: 1,
@@ -1810,7 +1814,7 @@ fn destroying_the_system_bell_gives_its_id_back() {
         .clients
         .get(1)
         .unwrap()
-        .register(7, ObjectType::XdgSystemBell)
+        .register_client_object(7, ObjectType::XdgSystemBell)
         .unwrap();
 
     deliver_to(&mut state, 1, 7, 0 /* destroy */, Vec::new());
@@ -1821,7 +1825,7 @@ fn destroying_the_system_bell_gives_its_id_back() {
             .clients
             .get(1)
             .unwrap()
-            .register(7, ObjectType::WlSurface)
+            .register_client_object(7, ObjectType::WlSurface)
             .is_ok(),
         "the id must be reusable once destroyed"
     );
@@ -1837,7 +1841,7 @@ fn a_toplevel_is_told_which_window_management_requests_work() {
         .clients
         .get(1)
         .unwrap()
-        .register_with_version(12, ObjectType::XdgToplevel, 5)
+        .register_client_object_with_version(12, ObjectType::XdgToplevel, 5)
         .unwrap();
 
     crate::protocol::xdg_toplevel::send_wm_capabilities(&mut state, 1, 12);
@@ -1864,7 +1868,7 @@ fn a_toplevel_too_old_for_wm_capabilities_is_not_sent_it() {
         .clients
         .get(1)
         .unwrap()
-        .register_with_version(12, ObjectType::XdgToplevel, 4)
+        .register_client_object_with_version(12, ObjectType::XdgToplevel, 4)
         .unwrap();
 
     crate::protocol::xdg_toplevel::send_wm_capabilities(&mut state, 1, 12);
@@ -1885,14 +1889,14 @@ fn a_toplevel_built_the_way_a_client_builds_one_carries_its_version() {
         .clients
         .get(1)
         .unwrap()
-        .register_with_version(2, ObjectType::XdgWmBase, 5)
+        .register_client_object_with_version(2, ObjectType::XdgWmBase, 5)
         .unwrap();
     state.create_surface(1, 10);
     state
         .clients
         .get(1)
         .unwrap()
-        .register_with_version(10, ObjectType::WlSurface, 5)
+        .register_client_object_with_version(10, ObjectType::WlSurface, 5)
         .unwrap();
 
     // xdg_wm_base.get_xdg_surface(new_id=11, surface=10)
@@ -1936,7 +1940,7 @@ fn state_with_a_focused_window() -> (CompositorState, Receiver<WaylandEvent>) {
         .clients
         .get(1)
         .unwrap()
-        .register_with_version(12, ObjectType::XdgToplevel, 5)
+        .register_client_object_with_version(12, ObjectType::XdgToplevel, 5)
         .unwrap();
     state.focused_surface = Some(WINDOW);
     (state, rx)
@@ -2075,7 +2079,7 @@ fn a_touch_point_stays_with_the_surface_it_started_on() {
         .clients
         .get(1)
         .unwrap()
-        .register_with_version(30, ObjectType::WlTouch, 8)
+        .register_client_object_with_version(30, ObjectType::WlTouch, 8)
         .unwrap();
     state.touches.push(crate::state::TouchBinding {
         client_id: 1,
@@ -2139,10 +2143,10 @@ fn a_disconnecting_client_takes_its_touch_points_with_it() {
 
 // -- Scroll axis detail ------------------------------------------------------
 
-use tokio_way_backends::input::ScrollSource;
 use crate::SCROLL_STEP;
 use crate::input::{deliver_scroll, deliver_scroll_end};
 use crate::protocol::wl_pointer as ptr;
+use tokio_way_backends::input::ScrollSource;
 
 /// A client with the pointer over its window, at the given `wl_pointer` version.
 fn state_with_a_pointer(version: u32) -> (CompositorState, Receiver<WaylandEvent>) {
@@ -2153,7 +2157,7 @@ fn state_with_a_pointer(version: u32) -> (CompositorState, Receiver<WaylandEvent
         .clients
         .get(1)
         .unwrap()
-        .register_with_version(30, ObjectType::WlPointer, version)
+        .register_client_object_with_version(30, ObjectType::WlPointer, version)
         .unwrap();
     state.pointers.push(crate::state::PointerBinding {
         client_id: 1,

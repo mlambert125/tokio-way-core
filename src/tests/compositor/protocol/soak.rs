@@ -170,7 +170,7 @@ fn register_client(state: &mut CompositorState) -> CancellationToken {
             .clients
             .get(CLIENT)
             .unwrap()
-            .register_with_version(id, object_type, 8);
+            .register_client_object_with_version(id, object_type, 8);
     }
 
     for surface in [10, 11, 12] {
@@ -179,29 +179,28 @@ fn register_client(state: &mut CompositorState) -> CancellationToken {
             .clients
             .get(CLIENT)
             .unwrap()
-            .register(surface, ObjectType::WlSurface);
+            .register_client_object(surface, ObjectType::WlSurface);
     }
     for (xdg, surface) in [(20, 10), (21, 11), (22, 12)] {
         state.create_xdg_surface(CLIENT, xdg, surface);
-        let _ = state.clients.get(CLIENT).unwrap().register_with_version(
-            xdg,
-            ObjectType::XdgSurface,
-            5,
-        );
-    }
-    state.create_xdg_toplevel(CLIENT, 30, 20);
-    let _ =
-        state
+        let _ = state
             .clients
             .get(CLIENT)
             .unwrap()
-            .register_with_version(30, ObjectType::XdgToplevel, 5);
+            .register_client_object_with_version(xdg, ObjectType::XdgSurface, 5);
+    }
+    state.create_xdg_toplevel(CLIENT, 30, 20);
+    let _ = state
+        .clients
+        .get(CLIENT)
+        .unwrap()
+        .register_client_object_with_version(30, ObjectType::XdgToplevel, 5);
     state.create_xdg_positioner(CLIENT, 40);
     let _ = state
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(40, ObjectType::XdgPositioner);
+        .register_client_object(40, ObjectType::XdgPositioner);
     state.create_region(CLIENT, 70);
     state.create_viewport(CLIENT, 71, 12);
     token

@@ -40,7 +40,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         GET_POPUP => handle_get_popup(state, msg),
         SET_WINDOW_GEOMETRY => handle_set_window_geometry(state, msg),
         ACK_CONFIGURE => handle_ack_configure(state, msg),
-        _ => super::unknown_request(state, msg, "xdg_surface"),
+        _ => super::reject_unknown_request(state, msg, "xdg_surface"),
     }
 }
 
@@ -80,7 +80,7 @@ fn handle_get_toplevel(state: &mut CompositorState, msg: &WaylandRequestWithClie
     // `configure_bounds` — is silently suppressed.
     let version = client.version(xdg_surface_id);
     if client
-        .register_with_version(toplevel_id, ObjectType::XdgToplevel, version)
+        .register_client_object_with_version(toplevel_id, ObjectType::XdgToplevel, version)
         .is_err()
     {
         return;
@@ -195,7 +195,7 @@ fn handle_get_popup(state: &mut CompositorState, msg: &WaylandRequestWithClientI
     // gated on version 3, and a popup left at version 1 would never get one.
     let version = client.version(xdg_surface_id);
     if client
-        .register_with_version(popup_id, ObjectType::XdgPopup, version)
+        .register_client_object_with_version(popup_id, ObjectType::XdgPopup, version)
         .is_err()
     {
         return;
@@ -239,7 +239,7 @@ fn handle_set_window_geometry(state: &mut CompositorState, msg: &WaylandRequestW
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(x), Some(y), Some(w), Some(h)) = (args.i32(), args.i32(), args.i32(), args.i32())
     else {
-        super::malformed_request(state, msg, "xdg_surface");
+        super::reject_malformed_request(state, msg, "xdg_surface");
         return;
     };
     let xdg_surface_id = msg.message.object_id;
@@ -255,7 +255,7 @@ fn handle_set_window_geometry(state: &mut CompositorState, msg: &WaylandRequestW
 fn handle_ack_configure(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(serial) = args.u32() else {
-        super::malformed_request(state, msg, "xdg_surface");
+        super::reject_malformed_request(state, msg, "xdg_surface");
         return;
     };
     let key = (msg.client_id, msg.message.object_id);

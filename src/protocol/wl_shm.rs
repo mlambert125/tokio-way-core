@@ -28,7 +28,7 @@ pub const FORMAT_XRGB8888: u32 = 1;
 pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo, fds: Vec<OwnedFd>) {
     match msg.message.op_code {
         CREATE_POOL => handle_create_pool(state, msg, fds),
-        _ => super::unknown_request(state, msg, "wl_shm"),
+        _ => super::reject_unknown_request(state, msg, "wl_shm"),
     }
 }
 
@@ -71,7 +71,10 @@ fn handle_create_pool(
     // Register before taking the descriptor out of `fds`. Every failure up to
     // this point leaves it owned by the `Vec<OwnedFd>`, so returning closes it;
     // once it becomes a `RawFd` below, nothing would.
-    if client.register(pool_id, ObjectType::WlShmPool).is_err() {
+    if client
+        .register_client_object(pool_id, ObjectType::WlShmPool)
+        .is_err()
+    {
         return;
     }
 

@@ -198,7 +198,7 @@ fn drag_offer(source_actions: u32, offer_actions: u32, preferred: u32) -> (Compo
         .clients
         .get(2)
         .unwrap()
-        .allocate_id_with_version(tokio_way_core::protocol::ObjectType::WlDataOffer, 3)
+        .register_server_object_with_version(tokio_way_core::protocol::ObjectType::WlDataOffer, 3)
         .unwrap();
     state.data_offers.insert(
         (2, offer_id),

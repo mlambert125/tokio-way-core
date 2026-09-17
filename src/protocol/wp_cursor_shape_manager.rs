@@ -38,7 +38,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
         // created, because the client is owed the object it named, and nothing
         // will ever arrive on it.
         GET_TABLET_TOOL_V2 => handle_get_device(state, msg, "get_tablet_tool_v2"),
-        _ => super::unknown_request(state, msg, INTERFACE),
+        _ => super::reject_unknown_request(state, msg, INTERFACE),
     }
 }
 
@@ -53,7 +53,7 @@ fn handle_get_device(
 ) {
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(device_id), Some(_input_object)) = (args.new_id(), args.u32()) else {
-        super::malformed_request(state, msg, INTERFACE);
+        super::reject_malformed_request(state, msg, INTERFACE);
         return;
     };
 
@@ -64,6 +64,10 @@ fn handle_get_device(
         .get(msg.client_id)
         .map_or(1, |client| client.version(msg.message.object_id));
     if let Some(client) = state.clients.get(msg.client_id) {
-        let _ = client.register_with_version(device_id, ObjectType::WpCursorShapeDevice, version);
+        let _ = client.register_client_object_with_version(
+            device_id,
+            ObjectType::WpCursorShapeDevice,
+            version,
+        );
     }
 }

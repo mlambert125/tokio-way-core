@@ -52,7 +52,7 @@ pub fn handle(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo, f
         DESTROY => handle_destroy(state, msg),
         FINISH => handle_finish(state, msg),
         SET_ACTIONS => handle_set_actions(state, msg),
-        _ => super::unknown_request(state, msg, "wl_data_offer"),
+        _ => super::reject_unknown_request(state, msg, "wl_data_offer"),
     }
 }
 
@@ -60,7 +60,7 @@ fn handle_accept(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo
     let mut args = ArgReader::new(&msg.message.args);
     // accept args: uint serial, string mime_type (nullable)
     let (Some(_serial), Some(mime_type)) = (args.u32(), args.string_or_null()) else {
-        super::malformed_request(state, msg, "wl_data_offer");
+        super::reject_malformed_request(state, msg, "wl_data_offer");
         return;
     };
 
@@ -95,7 +95,7 @@ fn handle_receive(
 ) {
     let mut args = ArgReader::new(&msg.message.args);
     let Some(mime_type) = args.string() else {
-        super::malformed_request(state, msg, "wl_data_offer");
+        super::reject_malformed_request(state, msg, "wl_data_offer");
         return;
     };
     // The dispatcher guarantees exactly one, having claimed it from the
@@ -169,7 +169,7 @@ fn handle_finish(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo
 fn handle_set_actions(state: &mut CompositorState, msg: &WaylandRequestWithClientInfo) {
     let mut args = ArgReader::new(&msg.message.args);
     let (Some(actions), Some(preferred)) = (args.u32(), args.u32()) else {
-        super::malformed_request(state, msg, "wl_data_offer");
+        super::reject_malformed_request(state, msg, "wl_data_offer");
         return;
     };
 

@@ -47,7 +47,7 @@ fn client_with_a_surface() -> (CompositorState, CancellationToken, Receiver<Wayl
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(SURFACE, tokio_way_core::protocol::ObjectType::WlSurface)
+        .register_client_object(SURFACE, tokio_way_core::protocol::ObjectType::WlSurface)
         .unwrap();
     (state, token, rx)
 }
@@ -121,7 +121,7 @@ fn a_request_that_is_merely_unimplemented_is_not_fatal() {
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(
+        .register_client_object(
             POSITIONER,
             tokio_way_core::protocol::ObjectType::XdgPositioner,
         )

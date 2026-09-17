@@ -35,7 +35,7 @@ fn client_with_a_pool() -> (CompositorState, CancellationToken, Receiver<Wayland
         .clients
         .get(CLIENT)
         .unwrap()
-        .register(POOL, ObjectType::WlShmPool)
+        .register_client_object(POOL, ObjectType::WlShmPool)
         .unwrap();
 
     let fd = unsafe { libc::memfd_create(c"shm-pool-test".as_ptr().cast(), libc::MFD_CLOEXEC) };
